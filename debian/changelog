@@ -1,3 +1,9 @@
+ncurses (5.9-4pexip1) pexip; urgency=low
+
+  * Prepare Pexip packaging
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 24 Dec 2013 23:43:40 +0000
+
 ncurses (5.9-4) unstable; urgency=low
 
   * Create debian/libtermcap.so at build time rather than trying to ship

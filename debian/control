@@ -1,8 +1,9 @@
 Source: ncurses
 Section: libs
 Priority: required
-Maintainer: Craig Small <csmall@debian.org>
-Uploaders: Sven Joachim <svenjoac@gmx.de>
+Maintainer: Pexip AS <packaging@pexip.com>
+XSBC-Pexip-Original-Maintainer: Craig Small <csmall@debian.org>
+XSBC-Pexip-Original-Uploaders: Sven Joachim <svenjoac@gmx.de>
 Build-Depends: debhelper (>= 8.1.3),
                dpkg-dev (>= 1.15.7),
                g++-multilib [amd64 i386 kfreebsd-amd64 powerpc ppc64 s390 sparc],
@@ -12,6 +13,7 @@ Standards-Version: 3.9.2
 Vcs-Browser: http://git.debian.org/?p=collab-maint/ncurses.git
 Vcs-Git: git://git.debian.org/collab-maint/ncurses.git
 Homepage: http://invisible-island.net/ncurses/
+XS-Pexip-Upstream: http://archive.ubuntu.com/ubuntu/ precise
 
 Package: libncurses5
 Architecture: any
