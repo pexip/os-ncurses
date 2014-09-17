@@ -1,3 +1,185 @@
+ncurses (5.9+20140913-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+  * Compress the manpages in ncurses-doc with "gzip -9n".
+  * Remove the ada documentation from ncurses-doc, since it is also
+    shipped in the libncursesada-doc package.  Thanks to Nicolas
+    Boulenguez for the patch (Closes: #757991).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 17 Sep 2014 19:00:57 +0200
+
+ncurses (5.9+20140712-2) unstable; urgency=low
+
+  * Explicitly disable sysmouse support on kfreebsd (Closes: #755250).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 19 Jul 2014 10:20:21 +0200
+
+ncurses (5.9+20140712-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Update libncurses5 and libncursesw5 symbols files, bump shlibs.
+  * Build-depend on autotools-dev to update config.{guess,sub}.  
+  * Ship st and st-256color terminfo entries in ncurses-term, now that
+    suckless-tools no longer includes them.
+  * Update xterm.ti from xterm 308.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 19 Jul 2014 07:01:11 +0200
+
+ncurses (5.9+20140118-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Apply includesubdir variable which was introduced in 20130805 to
+      gen-pkgconfig.in (Closes: #735782).
+  * Update years in debian/copyright.
+  * Refresh Debian patches.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 20 Jan 2014 18:31:56 +0100
+
+ncurses (5.9+20131221-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Update libtinfo5 and libncursesw5 symbols files, bump shlibs.
+  * Sync hurd terminfo description from the Savannah git repository.
+    - Add xenl (Closes: #727119).
+  * Depend on libc6-dev | libc-dev rather than just libc-dev in
+    libncurses{w,}5-dev.
+  * Check GPG signature of upstream tarballs in the watch files.
+  * Upgrade Standards-Version to 3.9.5, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 10 Jan 2014 18:10:11 +0100
+
+ncurses (5.9+20130608-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Add pow() to configure-check for math library, needed for
+      test/hanoi (Closes: #708056).
+    - Fix regression in error-reporting in lib_setup.c (Closes: #711134).
+  * Add Breaks against dialog (<< 1.2-20130523) to libtinfo5, since
+    older dialog versions misbehave (Closes: #709325).
+  * Move detached debugging symbols for libtinfo5 to libtinfo5-dbg.
+  * Switch Vcs-* fields to anonscm.debian.org.
+  * Upgrade Standards-Version to 3.9.4, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 10 Jun 2013 20:18:59 +0200
+
+ncurses (5.9+20130504-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - modify MKkey_defs.sh to filter out build-path which was
+      unnecessarily shown in curses.h.
+  * The headers should now be identical across architectures where
+    libc-dev is coinstallable, so mark libncurses{w,}5-dev as
+    "Multi-Arch: same" again (Closes: #689131).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 11 May 2013 13:00:56 +0200
+
+ncurses (5.9+20130119-1) experimental; urgency=low
+
+  * New upstream patchlevel.
+    - Modify init_pair() to accept -1's for color value after
+      assume_default_colors() has been called (Closes: #337095).
+    - Modify name-comparison for tgetstr, etc., to accommodate legacy
+      applications as well as to improve compatibility with BSD 4.2
+      termcap implementations (Closes: #698299).
+    - Add advice in infocmp manpage for termcap users (Closes: #698469).
+    - Update symbols files for new symbols, bump shlibs.
+    - Remove internal symbol _nc_memmove from libncurses{w,5} symbols files.
+  * Drop patches applied upstream: 00-terminfo-update.diff,
+    04-fix-tabset-directory.diff and 05-fix-poll-test.diff.
+  * Adapt patch 03-debian-ncursesconfig-omit-L.diff to upstream changes.
+  * Improve cross-building support:
+    - Don't fail if the system version of tic has a different (upstream)
+      version than the one that is being built (Closes: #681798).
+    - Assume working poll() (see #676461).
+  * Drop /usr/share/terminfo from ncurses-bin (Closes: #678441).
+  * Fix typo in package descriptions (architecure → architecture)
+    (Closes: #697533).
+  * Drop Conflicts on old libc6-i386 versions in the lib32* packages.
+  * Don't unnecessarily depend on g++-multilib on kfreebsd-amd64.
+  * Update years in debian/copyright.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 23 Jan 2013 18:50:58 +0100
+
+ncurses (5.9-10) unstable; urgency=low
+
+  * Drop the dependency of the biarch packages on libtinfo5
+    (Closes: #678440).
+    - Convert /usr/share/doc/lib{32,64}tinfo5 back to directories.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 27 Jun 2012 17:20:15 +0200
+
+ncurses (5.9-9) unstable; urgency=low
+
+  * New patch 05-fix-poll-test.diff adapted from the 20120608 upstream
+    patchlevel, correcting the CF_FUNC_POLL test which inadvertently
+    failed if standard input was redirected, as is the case on the Debian
+    buildds (Closes: #676461).
+  * Assume working poll() for the biarch packages where we cannot run the
+    configure check.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 14 Jun 2012 17:02:56 +0200
+
+ncurses (5.9-8) unstable; urgency=low
+
+  * Update terminfo descriptions to the 20120602 upstream patchlevel.
+    - Correct 'op' for bterm (Closes: #671227).
+  * Change section of ncurses-{base,term} to misc (see #671616).
+  * Move the Breaks against old binutils-gold versions to libtinfo-dev.
+  * Conflict with libc6-i386 (<= 2.9-18) in lib32tinfo{5,-dev}.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 03 Jun 2012 10:17:35 +0200
+
+ncurses (5.9-7) unstable; urgency=low
+
+  * Take over bterm terminfo entry from bogl-bterm in ncurses-term
+    (Closes: #562134).
+  * Make libtinfo5 rather than libncurses5 the main package where the
+    Debian FAQ and TODO files are installed.
+  * Let all library, -dev and -dbg packages directly depend on libtinfo5
+    and replace their /usr/share/doc directories with symlinks to save
+    some space.
+  * Mark ncurses-base and ncurses-term as Multi-Arch: foreign.
+  * Explicitly blacklist fbterm and stterm terminfo entries to prevent
+    accidents like #665877.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 01 May 2012 10:07:23 +0200
+
+ncurses (5.9-6) unstable; urgency=low
+
+  [ Craig Small ]
+  * Permit DMs to upload
+
+  [ Sven Joachim ]
+  * Blacklist st and st-256color terminfo entries until suckless-tools
+    stops shipping them (Closes: #665877).
+  * Update terminfo descriptions to the 20120407 upstream patchlevel.
+    - Revert to linux2.2 rather than linux3.0 as the base for the linux
+      terminfo entry, since the latter breaks display of line drawing
+      characters in non-UTF-8 locales (closes: #665959).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 09 Apr 2012 10:35:00 +0200
+
+ncurses (5.9-5) unstable; urgency=low
+
+  * Configure with /etc/terminfo as default terminfo dir
+    (Closes: #653435, #654672).
+    - New patch 04-fix-tabset-directory.diff to prevent incorrect tabset
+      directory in compiled terminfo descriptions (see #509919).
+  * Mention in debian/README.source that a non-standard autoconf version is
+    required to regenerate 'configure' (Closes: #580190).
+  * New patch 00-terminfo-update.diff, updating terminfo descriptions to
+    the 20120211 upstream patchlevel.
+    - Includes entries for gnu-mach and gnu-mach-color, installed into
+      the ncurses-base package (Closes: #614316).
+  * Update xterm.ti from xterm 276.  All xterm-* terminfo entries should
+    have kbs=\177 now.  Update patch 02-debian-backspace.diff accordingly.
+  * Drop patch 05-emdebian-wchar.diff, no longer needed.
+  * Protect shell loops in debian/rules with "set -e" to ensure that
+    any errors in them are caught (see Policy §4.6).
+  * Upgrade Standards-Version to 3.9.3, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 28 Feb 2012 20:36:51 +0100
+
 ncurses (5.9-4) unstable; urgency=low
 
   * Create debian/libtermcap.so at build time rather than trying to ship
