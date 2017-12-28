@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +32,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: frm_driver.c,v 1.114 2014/07/26 20:46:51 tom Exp $")
+MODULE_ID("$Id: frm_driver.c,v 1.119 2016/10/29 22:30:10 tom Exp $")
 
 /*----------------------------------------------------------------------------
   This is the core module of the form library. It contains the majority
@@ -979,7 +979,9 @@ Perform_Justification(FIELD *field, WINDOW *win)
   int len;
   int col = 0;
 
-  bp = Get_Start_Of_Data(field->buf, Buffer_Length(field));
+  bp = (Field_Has_Option(field, O_NO_LEFT_STRIP)
+	? field->buf
+	: Get_Start_Of_Data(field->buf, Buffer_Length(field)));
   len = (int)(After_End_Of_Data(field->buf, Buffer_Length(field)) - bp);
 
   if (len > 0)
@@ -1023,7 +1025,9 @@ Undo_Justification(FIELD *field, WINDOW *win)
   FIELD_CELL *bp;
   int len;
 
-  bp = Get_Start_Of_Data(field->buf, Buffer_Length(field));
+  bp = (Field_Has_Option(field, O_NO_LEFT_STRIP)
+	? field->buf
+	: Get_Start_Of_Data(field->buf, Buffer_Length(field)));
   len = (int)(After_End_Of_Data(field->buf, Buffer_Length(field)) - bp);
 
   if (len > 0)
@@ -1391,6 +1395,57 @@ _nc_Synchronize_Options(FIELD *field, Field_Options newopts)
   returnCode(res);
 }
 
+/*
+ * Removes the focus from the current field of the form.
+ */
+void
+_nc_Unset_Current_Field(FORM *form)
+{
+  FIELD *field = form->current;
+
+  _nc_Refresh_Current_Field(form);
+  if (Field_Has_Option(field, O_PUBLIC))
+    {
+      if (field->drows > field->rows)
+	{
+	  if (form->toprow == 0)
+	    ClrStatus(field, _NEWTOP);
+	  else
+	    SetStatus(field, _NEWTOP);
+	}
+      else
+	{
+	  if (Justification_Allowed(field))
+	    {
+	      Window_To_Buffer(form, field);
+	      werase(form->w);
+	      Perform_Justification(field, form->w);
+	      if (Field_Has_Option(field, O_DYNAMIC_JUSTIFY) &&
+		  (form->w->_parent == 0))
+		{
+		  copywin(form->w,
+			  Get_Form_Window(form),
+			  0,
+			  0,
+			  field->frow,
+			  field->fcol,
+			  field->frow,
+			  field->cols + field->fcol - 1,
+			  0);
+		  wsyncup(Get_Form_Window(form));
+		}
+	      else
+		{
+		  wsyncup(form->w);
+		}
+	    }
+	}
+    }
+  delwin(form->w);
+  form->w = (WINDOW *)0;
+  form->current = 0;
+}
+
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform
 |   Function      :  int _nc_Set_Current_Field(FORM  * form,
@@ -1411,7 +1466,7 @@ _nc_Set_Current_Field(FORM *form, FIELD *newfield)
 
   T((T_CALLED("_nc_Set_Current_Field(%p,%p)"), (void *)form, (void *)newfield));
 
-  if (!form || !newfield || !form->current || (newfield->form != form))
+  if (!form || !newfield || (newfield->form != form))
     returnCode(E_BAD_ARGUMENT);
 
   if ((form->status & _IN_DRIVER))
@@ -1425,51 +1480,10 @@ _nc_Set_Current_Field(FORM *form, FIELD *newfield)
   if ((field != newfield) ||
       !(form->status & _POSTED))
     {
-      if ((form->w) &&
+      if (field && (form->w) &&
 	  (Field_Has_Option(field, O_VISIBLE)) &&
 	  (field->form->curpage == field->page))
-	{
-	  _nc_Refresh_Current_Field(form);
-	  if (Field_Has_Option(field, O_PUBLIC))
-	    {
-	      if (field->drows > field->rows)
-		{
-		  if (form->toprow == 0)
-		    ClrStatus(field, _NEWTOP);
-		  else
-		    SetStatus(field, _NEWTOP);
-		}
-	      else
-		{
-		  if (Justification_Allowed(field))
-		    {
-		      Window_To_Buffer(form, field);
-		      werase(form->w);
-		      Perform_Justification(field, form->w);
-		      if (Field_Has_Option(field, O_DYNAMIC_JUSTIFY) &&
-			  (form->w->_parent == 0))
-			{
-			  copywin(form->w,
-				  Get_Form_Window(form),
-				  0,
-				  0,
-				  field->frow,
-				  field->fcol,
-				  field->frow,
-				  field->cols + field->fcol - 1,
-				  0);
-			  wsyncup(Get_Form_Window(form));
-			}
-		      else
-			{
-			  wsyncup(form->w);
-			}
-		    }
-		}
-	    }
-	  delwin(form->w);
-	  form->w = (WINDOW *)0;
-	}
+	_nc_Unset_Current_Field(form);
 
       field = newfield;
 
@@ -4924,7 +4938,7 @@ _nc_Widen_String(char *source, int *lengthp)
 	    {
 	      if (pass)
 		{
-		  result[need] = source[passed];
+		  result[need] = (wchar_t)source[passed];
 		}
 	      ++need;
 	      ++passed;

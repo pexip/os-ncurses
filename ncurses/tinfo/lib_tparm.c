@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,7 +42,7 @@
 #include <ctype.h>
 #include <tic.h>
 
-MODULE_ID("$Id: lib_tparm.c,v 1.92 2014/05/23 00:33:45 tom Exp $")
+MODULE_ID("$Id: lib_tparm.c,v 1.95 2016/05/28 23:22:52 tom Exp $")
 
 /*
  *	char *
@@ -253,6 +253,9 @@ parse_format(const char *s, char *format, int *len)
 	    case 'x':		/* FALLTHRU */
 	    case 'X':		/* FALLTHRU */
 	    case 's':
+#ifdef EXP_XTERM_1005
+	    case 'u':
+#endif
 		*format++ = *s;
 		done = TRUE;
 		break;
@@ -372,6 +375,9 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
 	    case 'x':		/* FALLTHRU */
 	    case 'X':		/* FALLTHRU */
 	    case 'c':		/* FALLTHRU */
+#ifdef EXP_XTERM_1005
+	    case 'u':
+#endif
 		if (lastpop <= 0)
 		    number++;
 		lastpop = -1;
@@ -521,7 +527,6 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
     termcap_hack = FALSE;
     if (popcount == 0) {
 	termcap_hack = TRUE;
-	popcount = number;
 	for (i = number - 1; i >= 0; i--) {
 	    if (p_is_s[i])
 		spush(p_is_s[i]);
@@ -567,6 +572,20 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
 		save_char(npop());
 		break;
 
+#ifdef EXP_XTERM_1005
+	    case 'u':
+		{
+		    unsigned char target[10];
+		    unsigned source = (unsigned) npop();
+		    int rc = _nc_conv_to_utf8(target, source, (unsigned)
+					      sizeof(target));
+		    int n;
+		    for (n = 0; n < rc; ++n) {
+			save_char(target[n]);
+		    }
+		}
+		break;
+#endif
 	    case 'l':
 		npush((int) strlen(spop()));
 		break;
@@ -652,11 +671,15 @@ tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
 		break;
 
 	    case 'A':
-		npush(npop() && npop());
+		y = npop();
+		x = npop();
+		npush(y && x);
 		break;
 
 	    case 'O':
-		npush(npop() || npop());
+		y = npop();
+		x = npop();
+		npush(y || x);
 		break;
 
 	    case '&':

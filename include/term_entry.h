@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2013 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +32,7 @@
  *     and: Thomas E. Dickey                        1998-on                 *
  ****************************************************************************/
 
-/* $Id: term_entry.h,v 1.44 2013/05/25 20:13:38 tom Exp $ */
+/* $Id: term_entry.h,v 1.47 2015/08/30 00:41:20 tom Exp $ */
 
 /*
  *	term_entry.h -- interface to entry-manipulation code
@@ -106,9 +106,9 @@ extern "C" {
 #define for_each_string(n,tp)  for(n = 0; n < NUM_STRINGS(tp);  n++)
 
 #if NCURSES_XNAMES
-#define for_each_ext_boolean(n,tp) for(n = BOOLCOUNT; n < NUM_BOOLEANS(tp); n++)
-#define for_each_ext_number(n,tp)  for(n = NUMCOUNT; n < NUM_NUMBERS(tp);  n++)
-#define for_each_ext_string(n,tp)  for(n = STRCOUNT; n < NUM_STRINGS(tp);  n++)
+#define for_each_ext_boolean(n,tp) for(n = BOOLCOUNT; (int) n < (int) NUM_BOOLEANS(tp); n++)
+#define for_each_ext_number(n,tp)  for(n = NUMCOUNT; (int) n < (int) NUM_NUMBERS(tp);  n++)
+#define for_each_ext_string(n,tp)  for(n = STRCOUNT; (int) n < (int) NUM_STRINGS(tp);  n++)
 #endif
 
 #define ExtBoolname(tp,i,names) EXT_NAMES(tp, i, BOOLCOUNT, (i - (tp->num_Booleans - tp->ext_Booleans)), names)
@@ -170,8 +170,9 @@ extern NCURSES_EXPORT(int) _nc_parse_entry (ENTRY *, int, bool);
 extern NCURSES_EXPORT(int) _nc_capcmp (const char *, const char *);
 
 /* write_entry.c: writing an entry to the file system */
-extern NCURSES_EXPORT(void) _nc_set_writedir (char *);
+extern NCURSES_EXPORT(void) _nc_set_writedir (const char *);
 extern NCURSES_EXPORT(void) _nc_write_entry (TERMTYPE *const);
+extern NCURSES_EXPORT(int) _nc_write_object(TERMTYPE *, char *, unsigned *, unsigned);
 
 /* comp_parse.c: entry list handling */
 extern NCURSES_EXPORT(void) _nc_read_entry_source (FILE*, char*, int, bool, bool (*)(ENTRY*));

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2009-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 2009-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,7 +29,7 @@
 /*
  * Author: Thomas E. Dickey
  *
- * $Id: demo_terminfo.c,v 1.37 2014/09/05 08:44:49 tom Exp $
+ * $Id: demo_terminfo.c,v 1.44 2016/09/10 21:22:49 tom Exp $
  *
  * A simple demo of the terminfo interface.
  */
@@ -45,6 +45,8 @@
 #define NCURSES_XNAMES 0
 #endif
 #endif
+
+static void failed(const char *) GCC_NORETURN;
 
 static void
 failed(const char *msg)
@@ -88,13 +90,14 @@ static long total_n_values;
 static long total_s_values;
 
 #define FCOLS 8
-#define FNAME(type) "%s %-*s = ", #type, FCOLS
+#define FNAME(type) "%s %-*s = ", #type, f_opt ? 24 : FCOLS
 
 static char *
 make_dbitem(char *p, char *q)
 {
-    char *result = malloc(strlen(e_opt) + 2 + (size_t) (p - q));
-    sprintf(result, "%s=%.*s", e_opt, (int) (p - q), q);
+    size_t need = strlen(e_opt) + 2 + (size_t) (p - q);
+    char *result = malloc(need);
+    _nc_SPRINTF(result, _nc_SLIMIT(need) "%s=%.*s", e_opt, (int) (p - q), q);
     return result;
 }
 
@@ -164,7 +167,7 @@ free_dblist(void)
 #endif
 
 static void
-dumpit(NCURSES_CONST char *cap)
+dumpit(NCURSES_CONST char *cap, const char *show)
 {
     const char *str;
     int num;
@@ -173,7 +176,7 @@ dumpit(NCURSES_CONST char *cap)
 	total_values++;
 	total_s_values++;
 	if (!q_opt) {
-	    printf(FNAME(str), cap);
+	    printf(FNAME(str), show ? show : cap);
 	    while (*str != 0) {
 		int ch = UChar(*str++);
 		switch (ch) {
@@ -226,14 +229,14 @@ dumpit(NCURSES_CONST char *cap)
 	total_values++;
 	total_n_values++;
 	if (!q_opt) {
-	    printf(FNAME(num), cap);
+	    printf(FNAME(num), show ? show : cap);
 	    printf(" %d\n", num);
 	}
     } else if ((num = tigetflag(cap)) >= 0) {
 	total_values++;
 	total_b_values++;
 	if (!q_opt) {
-	    printf(FNAME(flg), cap);
+	    printf(FNAME(flg), show ? show : cap);
 	    printf("%s\n", num ? "true" : "false");
 	}
     }
@@ -266,6 +269,10 @@ abcdefghijklmnopqrstuvwxyz_";
     if (!q_opt)
 	printf("Terminal type \"%s\"\n", name);
     setupterm((NCURSES_CONST char *) name, 1, (int *) 0);
+    if (!q_opt) {
+	if (strcmp(name, ttytype))
+	    printf("... actual \"%s\"\n", ttytype);
+    }
 
     for (length = 1; length <= MAX_FORCE; ++length) {
 	/* set all digits to zeros */
@@ -280,7 +287,7 @@ abcdefghijklmnopqrstuvwxyz_";
 		cap[j] = legal[item[j]];
 	    }
 	    cap[length] = '\0';
-	    dumpit(cap);
+	    dumpit(cap, NULL);
 
 	    k = length - 1;
 	    do {
@@ -307,9 +314,9 @@ abcdefghijklmnopqrstuvwxyz_";
 }
 
 #if USE_CODE_LISTS
-#define fullname(type,n) f_opt ? type##fnames[n] : my_##type##codes[n]
+#define fullname(type,n) f_opt ? type##fnames[n] : cap
 #else
-#define fullname(type,n) my_##type##codes[n]
+#define fullname(type,n) cap
 #endif
 
 static void
@@ -327,28 +334,28 @@ demo_terminfo(char *name)
 
     if (b_opt) {
 	for (n = 0;; ++n) {
-	    cap = fullname(bool, n);
+	    cap = my_boolcodes[n];
 	    if (cap == 0)
 		break;
-	    dumpit(cap);
+	    dumpit(cap, fullname(bool, n));
 	}
     }
 
     if (n_opt) {
 	for (n = 0;; ++n) {
-	    cap = fullname(num, n);
+	    cap = my_numcodes[n];
 	    if (cap == 0)
 		break;
-	    dumpit(cap);
+	    dumpit(cap, fullname(num, n));
 	}
     }
 
     if (s_opt) {
 	for (n = 0;; ++n) {
-	    cap = fullname(str, n);
+	    cap = my_strcodes[n];
 	    if (cap == 0)
 		break;
-	    dumpit(cap);
+	    dumpit(cap, fullname(str, n));
 	}
     }
 #ifdef NCURSES_VERSION
@@ -362,13 +369,13 @@ demo_terminfo(char *name)
 		    || (NUM_NUMBERS(term) != NUMCOUNT)
 		    || (NUM_STRINGS(term) != STRCOUNT))) {
 		for (n = BOOLCOUNT; n < NUM_BOOLEANS(term); ++n) {
-		    dumpit(ExtBoolname(term, (int) n, boolnames));
+		    dumpit(ExtBoolname(term, (int) n, boolnames), NULL);
 		}
 		for (n = NUMCOUNT; n < NUM_NUMBERS(term); ++n) {
-		    dumpit(ExtNumname(term, (int) n, numnames));
+		    dumpit(ExtNumname(term, (int) n, numnames), NULL);
 		}
 		for (n = STRCOUNT; n < NUM_STRINGS(term); ++n) {
-		    dumpit(ExtStrname(term, (int) n, strnames));
+		    dumpit(ExtStrname(term, (int) n, strnames), NULL);
 		}
 	    }
 #endif
@@ -390,11 +397,13 @@ demo_terminfo(char *name)
 			    !strcmp(xterm_keys[n], "kRIT")) {
 			    continue;
 			}
-			sprintf(temp, "%.*s", 8, xterm_keys[n]);
+			_nc_SPRINTF(temp, _nc_SLIMIT(sizeof(temp))
+				    "%.*s", 8, xterm_keys[n]);
 		    } else {
-			sprintf(temp, "%.*s%d", 8, xterm_keys[n], mod);
+			_nc_SPRINTF(temp, _nc_SLIMIT(sizeof(temp))
+				    "%.*s%d", 8, xterm_keys[n], mod);
 		    }
-		    dumpit(temp);
+		    dumpit(temp, NULL);
 		}
 	    }
 	}
@@ -453,6 +462,7 @@ parse_description(const char *input_name)
     if ((fp = fopen(input_name, "r")) == 0)
 	failed("cannot open input-file");
     len = fread(my_blob, sizeof(char), (size_t) sb.st_size, fp);
+    my_blob[sb.st_size] = '\0';
     fclose(fp);
 
     /*
@@ -726,7 +736,7 @@ copy_code_list(NCURSES_CONST char *const *list)
 		length += chunk;
 	    } else {
 		result[count] = unused;
-		strcpy(unused, list[count]);
+		_nc_STRCPY(unused, list[count], length);
 		unused += chunk;
 	    }
 	}
@@ -887,8 +897,12 @@ main(int argc, char *argv[])
 	}
     }
 
-    printf("%ld values (%ld booleans, %ld numbers, %ld strings)\n",
-	   total_values, total_b_values, total_n_values, total_s_values);
+#define PLURAL(n) n, (n != 1) ? "s" : ""
+    printf("%ld value%s (%ld boolean%s, %ld number%s, %ld string%s)\n",
+	   PLURAL(total_values),
+	   PLURAL(total_b_values),
+	   PLURAL(total_n_values),
+	   PLURAL(total_s_values));
 
 #ifdef NO_LEAKS
     free_dblist();
@@ -909,7 +923,7 @@ main(int argc, char *argv[])
 int
 main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 {
-    printf("This program requires the terminfo functions such as tigetstr\n");
+    failed("This program requires the terminfo functions such as tigetstr");
     ExitProgram(EXIT_FAILURE);
 }
 #endif /* HAVE_TIGETSTR */

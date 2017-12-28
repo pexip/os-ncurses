@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -159,7 +159,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_mvcur.c,v 1.135 2014/04/26 18:47:20 juergen Exp $")
+MODULE_ID("$Id: lib_mvcur.c,v 1.140 2016/10/01 17:37:33 tom Exp $")
 
 #define WANT_CHAR(sp, y, x) NewScreen(sp)->_line[y].text[x]	/* desired state */
 
@@ -992,10 +992,10 @@ _nc_real_mvcur(NCURSES_SP_DCLx
 	}
 
 	if (xold >= screen_columns(SP_PARM)) {
-	    int l;
 
 	    if (SP_PARM->_nl) {
-		l = (xold + 1) / screen_columns(SP_PARM);
+		int l = (xold + 1) / screen_columns(SP_PARM);
+
 		yold += l;
 		if (yold >= screen_lines(SP_PARM))
 		    l -= (yold - screen_lines(SP_PARM) - 1);
@@ -1181,7 +1181,7 @@ roll(int n)
 int
 main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 {
-    strcpy(tname, getenv("TERM"));
+    _nc_STRCPY(tname, getenv("TERM"), sizeof(tname));
     load_term();
     _nc_setupscreen(lines, columns, stdout, FALSE, 0);
     baudrate();
@@ -1245,7 +1245,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 							     before.tv_sec)
 			   * 1000000));
 	} else if (buf[0] == 'r') {
-	    (void) strcpy(tname, termname());
+	    _nc_STRCPY(tname, termname(), sizeof(tname));
 	    load_term();
 	} else if (sscanf(buf, "l %s", tname) == 1) {
 	    load_term();
@@ -1278,7 +1278,8 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 		}
 	    }
 	} else if (buf[0] == 'i') {
-	    dump_init((char *) NULL, F_TERMINFO, S_TERMINFO, 70, 0, FALSE);
+	    dump_init(NULL, F_TERMINFO, S_TERMINFO,
+		      FALSE, 70, 0, 0, FALSE, FALSE, 0);
 	    dump_entry(&cur_term->type, FALSE, TRUE, 0, 0);
 	    putchar('\n');
 	} else if (buf[0] == 'o') {

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -34,7 +34,7 @@
  ****************************************************************************/
 
 /*
- * $Id: curses.priv.h,v 1.539 2014/09/04 22:52:07 tom Exp $
+ * $Id: curses.priv.h,v 1.554 2016/11/21 23:28:54 tom Exp $
  *
  *	curses.priv.h
  *
@@ -561,7 +561,7 @@ weak_symbol(pthread_mutexattr_settype);
 weak_symbol(pthread_mutexattr_init);
 extern NCURSES_EXPORT(int) _nc_sigprocmask(int, const sigset_t *, sigset_t *);
 #    undef  sigprocmask
-#    define sigprocmask _nc_sigprocmask
+#    define sigprocmask(a, b, c) _nc_sigprocmask(a, b, c)
 #  endif
 #endif
 
@@ -581,7 +581,7 @@ weak_symbol(pthread_self);
 weak_symbol(pthread_equal);
 extern NCURSES_EXPORT(int) _nc_sigprocmask(int, const sigset_t *, sigset_t *);
 #    undef  sigprocmask
-#    define sigprocmask _nc_sigprocmask
+#    define sigprocmask(a, b, c) _nc_sigprocmask(a, b, c)
 #  endif
 #endif /* USE_PTHREADS_EINTR */
 
@@ -675,6 +675,14 @@ typedef enum {
 	,M_TERM_DRIVER		/* Win32 console, etc */
 #endif
 } MouseType;
+
+typedef enum {
+    	MF_X10 = 0		/* conventional 3-byte format */
+	, MF_SGR1006		/* xterm private mode 1006, SGR-style */
+#ifdef EXP_XTERM_1005
+	, MF_XTERM_1005		/* xterm UTF-8 private mode 1005 */
+#endif
+} MouseFormat;
 
 /*
  * Structures for scrolling.
@@ -893,10 +901,10 @@ typedef struct {
 #endif
 
 #ifdef TRACE
-	bool		init_trace;
 	char		trace_fname[PATH_MAX];
 	int		trace_level;
 	FILE		*trace_fp;
+	int		trace_fd;
 
 	char		*tracearg_buf;
 	size_t		tracearg_used;
@@ -1145,6 +1153,7 @@ struct screen {
 	mmask_t		_mouse_mask;	/* set via mousemask() */
 	mmask_t		_mouse_mask2;	/* OR's in press/release bits */
 	mmask_t		_mouse_bstate;
+	MouseFormat	_mouse_format;	/* type of xterm mouse protocol */
 	NCURSES_CONST char *_mouse_xtermcap; /* string to enable/disable mouse */
 	MEVENT		_mouse_events[EV_MAX];	/* hold the last mouse event seen */
 	MEVENT		*_mouse_eventp;	/* next free slot in event queue */
@@ -1419,11 +1428,11 @@ extern NCURSES_EXPORT_VAR(SIG_ATOMIC_T) _nc_have_sigwinch;
 			    NCURSES_OUTC_FUNC (NCURSES_SP_ARGx CharOf(ch)); \
 			    COUNT_OUTCHARS(1);					    \
 			} else {						    \
-			    PUTC_INIT;						    \
 			    for (PUTC_i = 0; PUTC_i < CCHARW_MAX; ++PUTC_i) {	    \
 				PUTC_ch = (ch).chars[PUTC_i];			    \
 				if (PUTC_ch == L'\0')				    \
 				    break;					    \
+				PUTC_INIT;						    \
 				PUTC_n = (int) wcrtomb(PUTC_buf,		    \
 						       (ch).chars[PUTC_i], &PUT_st); \
 				if (PUTC_n <= 0) {				    \
@@ -1616,27 +1625,31 @@ extern NCURSES_EXPORT(void)	_nc_locked_tracef (const char *, ...) GCC_PRINTFLIKE
 
 #define TR(n, a)	if (USE_TRACEF(n)) _nc_locked_tracef a
 #define T(a)		TR(TRACE_CALLS, a)
-#define TRACE_RETURN(value,type)     return _nc_retrace_##type(value)
+#define TRACE_RETURN(value,type)     return _nc_retrace_##type((type)(value))
+#define TRACE_RETURN1(value,dst)     return _nc_retrace_##dst(value)
 #define TRACE_RETURN2(value,dst,src) return _nc_retrace_##dst##_##src(value)
 #define TRACE_RETURN_SP(value,type)  return _nc_retrace_##type(SP_PARM, value)
 
-#define NonNull(s)	((s) != 0 ? s : "<null>")
+typedef void VoidFunc(void);
+
+#define TR_FUNC(value)          ((const char*) &(value))
+#define NonNull(s)	        ((s) != 0 ? s : "<null>")
 
 #define returnAttr(code)	TRACE_RETURN(code,attr_t)
 #define returnBits(code)	TRACE_RETURN(code,unsigned)
 #define returnBool(code)	TRACE_RETURN(code,bool)
-#define returnCPtr(code)	TRACE_RETURN(code,cptr)
-#define returnCVoidPtr(code)	TRACE_RETURN(code,cvoid_ptr)
+#define returnCPtr(code)	TRACE_RETURN1(code,cptr)
+#define returnCVoidPtr(code)	TRACE_RETURN1(code,cvoid_ptr)
 #define returnChar(code)	TRACE_RETURN(code,char)
 #define returnChtype(code)	TRACE_RETURN(code,chtype)
 #define returnCode(code)	TRACE_RETURN(code,int)
 #define returnIntAttr(code)	TRACE_RETURN2(code,int,attr_t)
 #define returnMMask(code)	TRACE_RETURN_SP(code,mmask_t)
-#define returnPtr(code)		TRACE_RETURN(code,ptr)
-#define returnSP(code)		TRACE_RETURN(code,sp)
+#define returnPtr(code)		TRACE_RETURN1(code,ptr)
+#define returnSP(code)		TRACE_RETURN1(code,sp)
 #define returnVoid		T((T_RETURN(""))); return
-#define returnVoidPtr(code)	TRACE_RETURN(code,void_ptr)
-#define returnWin(code)		TRACE_RETURN(code,win)
+#define returnVoidPtr(code)	TRACE_RETURN1(code,void_ptr)
+#define returnWin(code)		TRACE_RETURN1(code,win)
 
 extern NCURSES_EXPORT(NCURSES_BOOL)     _nc_retrace_bool (int);
 extern NCURSES_EXPORT(NCURSES_CONST void *) _nc_retrace_cvoid_ptr (NCURSES_CONST void *);
@@ -1670,6 +1683,10 @@ extern NCURSES_EXPORT_VAR(long)         _nc_outchars;
 #endif
 
 extern NCURSES_EXPORT_VAR(unsigned)     _nc_tracing;
+
+extern NCURSES_EXPORT(char *) _nc_tracebits (void);
+extern NCURSES_EXPORT(char *) _tracemouse (const MEVENT *);
+extern NCURSES_EXPORT(void) _tracedump (const char *, WINDOW *);
 
 #if USE_WIDEC_SUPPORT
 extern NCURSES_EXPORT(const char *) _nc_viswbuf2 (int, const wchar_t *);
@@ -1937,9 +1954,10 @@ extern NCURSES_EXPORT(void)   _nc_tinfo_cmdch(TERMINAL *, int);
 extern NCURSES_EXPORT(int)    _nc_ripoffline(int, int(*)(WINDOW*, int));
 
 /* lib_setup.c */
+#define SETUP_FAIL ERR
 #define ret_error(code, fmt, arg)	if (errret) {\
 					    *errret = code;\
-					    returnCode(ERR);\
+					    returnCode(SETUP_FAIL);\
 					} else {\
 					    fprintf(stderr, fmt, arg);\
 					    exit(EXIT_FAILURE);\
@@ -1949,7 +1967,7 @@ extern NCURSES_EXPORT(int)    _nc_ripoffline(int, int(*)(WINDOW*, int));
 
 #define ret_error0(code, msg)		if (errret) {\
 					    *errret = code;\
-					    returnCode(ERR);\
+					    returnCode(SETUP_FAIL);\
 					} else {\
 					    fprintf(stderr, msg);\
 					    exit(EXIT_FAILURE);\
@@ -2004,6 +2022,7 @@ extern NCURSES_EXPORT(char *) _nc_trace_buf (int, size_t);
 extern NCURSES_EXPORT(char *) _nc_trace_bufcat (int, const char *);
 extern NCURSES_EXPORT(char *) _nc_tracechar (SCREEN *, int);
 extern NCURSES_EXPORT(char *) _nc_tracemouse (SCREEN *, MEVENT const *);
+extern NCURSES_EXPORT(char *) _nc_trace_mmask_t (SCREEN *, mmask_t);
 extern NCURSES_EXPORT(int) _nc_access (const char *, int);
 extern NCURSES_EXPORT(int) _nc_baudrate (int);
 extern NCURSES_EXPORT(int) _nc_freewin (WINDOW *);
@@ -2272,6 +2291,7 @@ typedef struct term_driver {
     int    (*td_kpad)(struct DriverTCB*, int);
     int    (*td_kyOk)(struct DriverTCB*, int, int);
     bool   (*td_kyExist)(struct DriverTCB*, int);
+    int    (*td_cursorSet)(struct DriverTCB*, int);
 } TERM_DRIVER;
 
 typedef struct DriverTCB
@@ -2343,7 +2363,7 @@ extern NCURSES_EXPORT(void)   _nc_get_screensize(SCREEN *, int *, int *);
 #endif /* !USE_TERM_DRIVER */
 
 #ifdef USE_TERM_DRIVER
-#ifdef __MINGW32__
+#if defined(USE_WIN32CON_DRIVER)
 #include <nc_mingw.h>
 extern NCURSES_EXPORT_VAR(TERM_DRIVER) _nc_WIN_DRIVER;
 extern NCURSES_EXPORT(int)  _nc_mingw_isatty(int fd);
@@ -2361,7 +2381,7 @@ extern NCURSES_EXPORT(int) _nc_mingw_testmouse(
 extern NCURSES_EXPORT_VAR(TERM_DRIVER) _nc_TINFO_DRIVER;
 #endif
 
-#if defined(USE_TERM_DRIVER) && defined(__MINGW32__)
+#if defined(USE_TERM_DRIVER) && defined(USE_WIN32CON_DRIVER)
 #define NC_ISATTY(fd) _nc_mingw_isatty(fd)
 #else
 #define NC_ISATTY(fd) isatty(fd)
@@ -2370,7 +2390,7 @@ extern NCURSES_EXPORT_VAR(TERM_DRIVER) _nc_TINFO_DRIVER;
 #ifdef USE_TERM_DRIVER
 #  define IsTermInfo(sp)       ((TCBOf(sp) != 0) && ((TCBOf(sp)->drv->isTerminfo)))
 #  define HasTInfoTerminal(sp) ((0 != TerminalOf(sp)) && IsTermInfo(sp))
-#  ifdef __MINGW32__
+#  if defined(USE_WIN32CON_DRIVER)
 #    define IsTermInfoOnConsole(sp) (IsTermInfo(sp)&&_nc_mingw_isconsole(TerminalOf(sp)->Filedes))
 #else
 #    define IsTermInfoOnConsole(sp) FALSE
@@ -2478,6 +2498,11 @@ extern NCURSES_EXPORT(NCURSES_CONST char *) _nc_keyname (SCREEN *, int);
 extern NCURSES_EXPORT(int) _nc_ungetch (SCREEN *, int);
 extern NCURSES_EXPORT(NCURSES_CONST char *) _nc_unctrl (SCREEN *, chtype);
 
+#endif
+
+#ifdef EXP_XTERM_1005
+NCURSES_EXPORT(int) _nc_conv_to_utf8(unsigned char *, unsigned, unsigned);
+NCURSES_EXPORT(int) _nc_conv_to_utf32(unsigned *, const char *, unsigned);
 #endif
 
 #ifdef __cplusplus

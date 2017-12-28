@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 2008-2012,2014 Free Software Foundation, Inc.              *
+.\" Copyright (c) 2008-2014,2015 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,7 +26,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_threads.3x,v 1.20 2014/03/15 19:25:28 tom Exp $
+.\" $Id: curs_threads.3x,v 1.23 2015/12/05 18:47:04 tom Exp $
 .TH curs_threads 3X ""
 .de bP
 .IP \(bu 4
@@ -34,8 +34,7 @@
 .na
 .hy 0
 .SH NAME
-\fBuse_screen\fR,
-\fBuse_window\fR \- \fBcurses\fR thread support
+\fBcurs_threads\fR \- \fBcurses\fR thread support
 .ad
 .hy
 .SH SYNOPSIS
@@ -67,7 +66,7 @@ configuration which hide the mutex's needed to prevent concurrent
 use of the global variables when configured for threading.
 .PP
 In addition to forcing access to members of the \fBWINDOW\fP structure
-to be via functions (see \fBcurs_opaque\fP(3x)),
+to be via functions (see \fBcurs_opaque\fP(3X)),
 it makes functions of the common global variables,
 e.g.,
 COLORS,
@@ -588,7 +587,7 @@ wvline_set/window
 .TE
 .\" ***************************************************************************
 .SH RETURN VALUE
-These functions all return TRUE or FALSE, except as noted.
+These functions all return \fBTRUE\fP or \fBFALSE\fP, except as noted.
 .SH NOTES
 Both a macro and a function are provided for each name.
 .SH PORTABILITY

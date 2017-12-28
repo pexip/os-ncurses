@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,7 +39,7 @@
 extern int malloc_errfd;	/* FIXME */
 #endif
 
-MODULE_ID("$Id: lib_freeall.c,v 1.62 2012/11/17 23:53:03 tom Exp $")
+MODULE_ID("$Id: lib_freeall.c,v 1.64 2016/05/28 23:11:26 tom Exp $")
 
 /*
  * Free all ncurses data.  This is used for testing only (there's no practical
@@ -48,7 +48,6 @@ MODULE_ID("$Id: lib_freeall.c,v 1.62 2012/11/17 23:53:03 tom Exp $")
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(_nc_freeall) (NCURSES_SP_DCL0)
 {
-    WINDOWLIST *p, *q;
     static va_list empty_va;
 
     T((T_CALLED("_nc_freeall()")));
@@ -66,6 +65,7 @@ NCURSES_SP_NAME(_nc_freeall) (NCURSES_SP_DCL0)
 	_nc_lock_global(curses);
 
 	while (WindowList(SP_PARM) != 0) {
+	    WINDOWLIST *p, *q;
 	    bool deleted = FALSE;
 
 	    /* Delete only windows that're not a parent */
@@ -131,8 +131,6 @@ _nc_freeall(void)
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(_nc_free_and_exit) (NCURSES_SP_DCLx int code)
 {
-    char *last_buffer = (SP_PARM != 0) ? SP_PARM->out_buffer : 0;
-
     NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
     NCURSES_SP_NAME(_nc_freeall) (NCURSES_SP_ARG);
 #ifdef TRACE
@@ -142,7 +140,6 @@ NCURSES_SP_NAME(_nc_free_and_exit) (NCURSES_SP_DCLx int code)
 	free(_nc_varargs("?", fake));
     }
 #endif
-    FreeIfNeeded(last_buffer);
     exit(code);
 }
 

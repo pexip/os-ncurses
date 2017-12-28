@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.               --
+-- Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.               --
 --                                                                           --
 -- Permission is hereby granted, free of charge, to any person obtaining a   --
 -- copy of this software and associated documentation files (the             --
@@ -25,7 +25,7 @@
 -- sale, use or other dealings in this Software without prior written        --
 -- authorization.                                                            --
 -------------------------------------------------------------------------------
--- $Id: INSTALL,v 1.172 2014/06/21 18:53:42 tom Exp $
+-- $Id: INSTALL,v 1.194 2015/10/24 19:03:42 Tomas.Cech Exp $
 ---------------------------------------------------------------------
              How to install Ncurses/Terminfo on your system
 ---------------------------------------------------------------------
@@ -196,16 +196,15 @@ INSTALLATION PROCEDURE:
     NOTE: You must have installed the terminfo database, or set the
     environment variable $TERMINFO to point to a SVr4-compatible terminfo
     database before running the test programs.  Not all vendors' terminfo
-    databases are SVr4-compatible, but most seem to be.  Exceptions include
-    DEC's Digital Unix (formerly known as OSF/1).
+    databases are SVr4-compatible, but most seem to be.
+
+    It is possible to configure ncurses to use other terminfo database formats.
+    A few are provided as examples in the include-directory (see --with-caps).
 
     If you run the test programs WITHOUT installing terminfo, ncurses may
     read the termcap file and cache that in $HOME/.terminfo, which will
     thereafter be used instead of the terminfo database.  See the comments
     on "--enable-getcap-cache", to see why this is a Bad Thing.
-
-    It is possible to configure ncurses to use other terminfo database formats.
-    A few are provided as examples in the include-directory (see --with-caps).
 
     The ncurses program is designed specifically to test the ncurses library.
     You can use it to verify that the screen highlights work correctly, that
@@ -227,8 +226,7 @@ INSTALLATION PROCEDURE:
   ############################################################################
   #     CAVEAT EMPTOR: `install.data' run as root will NUKE any existing     #
   #  terminfo database. If you have any custom or unusual entries SAVE them  #
-  #  before you install ncurses.  I have a file called terminfo.custom for   #
-  #  this purpose.  Don't forget to run tic on the file once you're done.    #
+  #  before you install ncurses.                                             #
   ############################################################################
 
     The terminfo(5) manual page must be preprocessed with tbl(1) before
@@ -352,6 +350,10 @@ SUMMARY OF CONFIGURE OPTIONS:
 	Use --disable-libtool-version to use the libtool -version-info feature.
 	This corresponds to the setting used before patch 20100515.
 
+	Starting with patch 20141115, using this option causes the configure
+	script to apply the top-level VERSION file to the ABI version used
+	for libtool.
+
     --disable-leaks
 	For testing, compile-in code that frees memory that normally would not
 	be freed, to simplify analysis of memory-leaks.
@@ -360,11 +362,17 @@ SUMMARY OF CONFIGURE OPTIONS:
 	a screen, since (even after calling endwin()), it must be available
 	for use in the next call to refresh().  There are also chunks of
 	memory held for performance reasons.  That makes it hard to analyze
-	curses applications for memory leaks.  To work around this, build
-	a debugging version of the ncurses library which frees those chunks
+	curses applications for memory leaks.  To work around this, build a
+	debugging version of the ncurses library which frees those chunks
 	which it can, and provides the _nc_free_and_exit() function to free
-	the remainder on exit.  The ncurses utility and test programs use this
-	feature, e.g., via the ExitProgram() macro.
+	the remainder and then exit.  The ncurses utility and test programs
+	use this feature, e.g., via the ExitProgram() macro.
+
+	Because this lies outside of the library's intended usage, it is not
+	normally considered part of the ABI.  If there were some (as yet
+	unplanned) extension which frees memory in a manner that would let the
+	library resume and reallocate memory, then that would not use a "_nc_"
+	prefix.
 
     --disable-lp64
 	The header files will ignore use of the _LP64 symbol to make chtype
@@ -389,6 +397,37 @@ SUMMARY OF CONFIGURE OPTIONS:
 	installed into a subdirectory, e.g., /usr/local/include/ncurses,
 	rather than the include directory.  This makes it simpler to avoid
 	compile-time conflicts with other versions of curses.h
+
+	Putting the header files into a subdirectory assumes that applications
+	will follow the (standard) practice of including the headers with
+	reference to the subdirectory name.  For instance, the normal ncurses
+	header would be included using
+
+		#include <ncurses/curses.h>
+		#include <ncurses/term.h>
+
+	while the ncursesw headers would be found this way:
+
+		#include <ncursesw/curses.h>
+		#include <ncursesw/term.h>
+
+	In either case (with or without the --disable-overwrite option),
+	almost all applications are designed to include a related set of
+	curses header files from the same directory.
+
+	Manipulating the --includedir configure option to put header files
+	directly in a subdirectory of the normal include-directory defeats
+	this, and breaks builds of portable applications.  Likewise, putting
+	some headers in /usr/include, and others in a subdirectory is a good
+	way to break builds.
+
+	When configured with --disable-overwrite, the installed header files'
+	embedded #include's are adjusted to use the same style of includes
+	noted above.  In particular, the unctrl.h header is included from
+	curses.h, which means that a makefile which tells the compiler to
+	include directly from the subdirectory will fail to compile correctly.
+	Without some special effort, it will either fail to compile at all,
+	or the compiler may find a different unctrl.h file.
 
     --disable-relink
 	If --enable-rpath is given, the generated makefiles normally will
@@ -504,6 +543,14 @@ SUMMARY OF CONFIGURE OPTIONS:
 	NOTE: using this option will make libraries which are not binary-
 	compatible with libncursesw 5.4.  None of the interfaces change, but
 	applications which have mouse mask mmask_t's must be recompiled.
+
+    --enable-ext-putwin
+	Modify the file-format written by putwin() to use printable text rather
+	than binary files, allowing getwin() to read screen dumps written by
+	differently-configured ncurses libraries.  The extended getwin() can
+	still read binary screen dumps from the "same" configuration of
+	ncurses.  This does not change the ABI (the binary interface seen by
+	calling applications).
 
     --enable-getcap
 	Use the 4.4BSD getcap code if available, or a bundled version of it to
@@ -794,6 +841,17 @@ SUMMARY OF CONFIGURE OPTIONS:
 	For testing, compile and link with Gray Watson's dmalloc library.
 	This also sets the --disable-leaks option.
 
+    --with-export-syms[=XXX]
+	Limit exported symbols using libtool.  The configure script
+	automatically chooses an appropriate ".sym" file, which lists the
+	symbols which are part of the ABI.
+
+    --with-extra-suffix[=XXX]
+	Add the given suffix to header- and library-names to simplify
+	installing incompatible ncurses libraries, e.g., those using a
+	different ABI.  The renaming affects the name of the
+	include-subdirectory if --disable-overwrite is given.
+
     --with-fallbacks=XXX
 	Specify a list of fallback terminal descriptions which will be
 	compiled into the ncurses library.  See CONFIGURING FALLBACK ENTRIES.
@@ -841,7 +899,7 @@ SUMMARY OF CONFIGURE OPTIONS:
 		--with-hashed-db=/usr/local/BigBase
 	to find the corresponding include- and lib-directories under the
 	given directory.  Alternatively, you can specify a directory leaf
-	name, e.g., 
+	name, e.g.,
 		--with-hashed-db=db4
 	to make the configure script look for files in a subdirectory such as
 		/usr/include/db4/db.h
@@ -889,6 +947,9 @@ SUMMARY OF CONFIGURE OPTIONS:
 	using the appropriate patch for autoconf from
 		http://invisible-island.net/autoconf/
 
+    --with-libtool-opts=XXX
+	Specify additional libtool options.
+
     --with-manpage-aliases
 	Tell the configure script you wish to create entries in the
 	man-directory for aliases to manpages which list them, e.g., the
@@ -917,7 +978,7 @@ SUMMARY OF CONFIGURE OPTIONS:
 	copying the man-page for each alias.
 
     --with-manpage-tbl
-	Tell the configure script that you with to preprocess the manpages
+	Tell the configure script that you wish to preprocess the manpages
 	by running them through tbl to generate tables understandable by
 	nroff.
 
@@ -947,6 +1008,11 @@ SUMMARY OF CONFIGURE OPTIONS:
 	applications that required knowledge of the ospeed variable, i.e.,
 	those using termcap, do not use the higher speeds.  Your application
 	(or system, in general) may or may not.
+
+    --with-pc-suffix=SUFFIX
+	If ".pc" files are installed, optionally add a suffix to the files
+	and corresponding package names to separate unusual configurations.
+	If no option value is given (or if it is "none"), no suffix is added.
 
     --with-pkg-config=[DIR]
 	Check for pkg-config, optionally specifying its path.
@@ -988,7 +1054,7 @@ SUMMARY OF CONFIGURE OPTIONS:
 	For example, it may prevent you from running  the build tree's
 	copy of tic (for installing the terminfo database) because it
 	loads the system's copy of the ncurses shared libraries.
-	
+
 	In that case, using the misc/shlib script may be helpful, since it
 	sets $LD_LIBRARY_PATH to point to the build tree, e.g.,
 
@@ -1026,6 +1092,9 @@ SUMMARY OF CONFIGURE OPTIONS:
     --with-terminfo-dirs=XXX
 	Specify a search-list of terminfo directories which will be compiled
 	into the ncurses library (default: DATADIR/terminfo)
+
+	This is a colon-separated list, like the TERMINFO_DIRS environment
+	variable.
 
     --with-termlib[=XXX]
 	When building the ncurses library, organize this as two parts:  the
@@ -1071,6 +1140,37 @@ SUMMARY OF CONFIGURE OPTIONS:
     --with-trace
 	Configure the trace() function as part of the all models of the ncurses
 	library.  Normally it is part of the debug (libncurses_g) library only.
+
+    --with-versioned-syms[=XXX]
+	The Solaris, GNU and reportedly some other linkers (ld) accept a
+	"--version-script" option which tells the linker to annotate the
+	resulting objects with version identifiers.
+
+	Use "objdump -T" on a library to see the annotations.
+
+	The configure script attempts to automatically apply a suitable ".map"
+	file to provide this information for Linux.  Solaris mapfiles differ:
+
+	a) comments are not accepted
+	b) wildcards are not accepted, except for a special case of "_*".
+	c) each symbol listed in the map file must exist in the library
+
+	The Solaris limitations conflict with the development goal of providing
+	a small set of ".map" files as examples, which cover the most common
+	configurations.  Because that coverage is done by merging together
+	several builds, some symbols will be listed in the the ".map" files
+	that do not happen to be present in one configuration or another.
+
+	The sample ".map" (and ".sym") files are generated using a set of
+	scripts which build several configurations for each release version,
+	checking to see which of the "_nc_" symbols can be made local.  In
+	addition to the ncurses libraries and programs, the symbols used
+	by the "tack" program are made global.
+
+	These sample ".map" files will not cover all possible combinations.
+	In some cases, e.g., when using the --with-weak-symbols option, you
+	may prefer to use a different ".map" file by setting this option's
+	value.
 
     --with-xterm-kbs=XXX
 	Configure xterm's terminfo entries to use either BS (^H, i.e., ASCII
@@ -1147,18 +1247,62 @@ SUMMARY OF CONFIGURE OPTIONS:
 COMPATIBILITY WITH OLDER VERSIONS OF NCURSES:
 --------------------------------------------
 
-    Because ncurses implements the X/Open Curses Specification, its interface
-    is fairly stable.  That does not mean the interface does not change.
-    Changes are made to the documented interfaces when we find differences
-    between ncurses and X/Open or implementations which they certify (such as
-    Solaris).  We add extensions to those interfaces to solve problems not
-    addressed by the original curses design, but those must not conflict with
-    the X/Open documentation.
+    Because ncurses implements X/Open Curses, its interface is fairly stable. 
+    That does not mean the interface does not change.  Changes are made to the
+    documented interfaces when we find differences between ncurses and X/Open
+    or implementations which largely correspond to X/Open (such as Solaris). 
+    We add extensions to those interfaces to solve problems not addressed by
+    the original curses design, but those must not conflict with the X/Open
+    documentation.
 
     Here are some of the major interface changes, and related problems which
     you may encounter when building a system with different versions of
     ncurses:
 
+    6.0 (Aug 08, 2015)
+	Interface changes:
+
+	+ The 6.0 ABI modifies the defaults for these configure options:
+	   --enable-const
+	   --enable-ext-colors
+	   --enable-ext-mouse
+	   --enable-ext-putwin
+	   --enable-interop
+	   --enable-lp64
+	   --enable-sp-funcs
+	   --with-chtype=uint32_t
+	   --with-mmask_t=uint32_t
+	   --with-tparm-arg=intptr_t
+
+	+ ncurses supports symbol versioning.  If you use this feature, about
+	  half of the "_nc_" private symbols are changed to local symbols.
+
+	+ a few applications may need to explicitly flush the standard output
+	  when switching between printf's and (curses) printw.
+
+	Added extensions:
+
+	+ use_tioctl is an improvement over use_env
+
+	+ added wgetdelay to support the NCURSES_OPAQUE feature.
+
+	Added internal functions (other than "_sp" variants):
+		_nc_init_termtype
+		_nc_mvcur
+		_nc_putchar
+		_nc_setenv_num
+		_nc_trace_mmask_t
+
+	Removed internal functions:
+		none
+
+	Modified internal functions:
+		_nc_do_color - change parameters from short/bool to int
+		_nc_keypad - change parameter from bool to int
+		_nc_setupscreen - change parameter from bool to int
+		_nc_signal_handler - change parameter from bool to int
+
+    5.9 (Apr 04, 2011)
     5.8 (Feb 26, 2011)
 	Interface changes:
 
@@ -1709,9 +1853,10 @@ IF YOU ARE A SYSTEM INTEGRATOR:
     Configuration and Installation:
 
 	On platforms where ncurses is assumed to be installed in /usr/lib,
-	the configure script uses "/usr" as a default:
+	the configure script uses "/usr" as a default.  These include any
+	that use the Linux kernel, as well as these special cases:
 
-		GNU/Linux, FreeBSD, NetBSD, OpenBSD, Cygwin
+		FreeBSD, NetBSD, OpenBSD, Cygwin, MinGW
 
 	For other platforms, the default is "/usr/local".  See the discussion
 	of the "--disable-overwrite" option.
@@ -1872,11 +2017,10 @@ installation), there are a couple of details you need to be aware of.
 They have to do with the ncurses library, which uses terminfo rather
 than termcap for describing terminal characteristics.
 
-Though the ncurses library is terminfo-based, it will interpret your
+Though the ncurses library is terminfo-based, it can interpret your
 TERMCAP variable (if present), any local termcap files you reference
-through it, and the system termcap file.  However, in order to avoid
-slowing down your application startup, it will only do this once per
-terminal type!
+through it, and the system termcap file.  However, to avoid slowing
+down your application startup, it does this only once per terminal type!
 
 The first time you load a given terminal type from your termcap
 database, the library initialization code will automatically write it
