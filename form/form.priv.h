@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -30,7 +30,7 @@
  *   Author:  Juergen Pfeifer, 1995,1997                                    *
  ****************************************************************************/
 
-/* $Id: form.priv.h,v 0.37 2014/07/27 00:21:42 tom Exp $ */
+/* $Id: form.priv.h,v 0.41 2016/10/29 22:30:23 tom Exp $ */
 
 #ifndef FORM_PRIV_H
 #define FORM_PRIV_H 1
@@ -162,7 +162,8 @@ TypeArgument;
 
 #define ALL_FIELD_OPTS (Field_Options)( \
 			STD_FIELD_OPTS |\
-			O_DYNAMIC_JUSTIFY)
+			O_DYNAMIC_JUSTIFY |\
+			O_NO_LEFT_STRIP)
 
 #define C_BLANK ' '
 #define is_blank(c) ((c)==C_BLANK)
@@ -183,6 +184,7 @@ extern NCURSES_EXPORT(FIELD *) _nc_First_Active_Field (FORM*);
 extern NCURSES_EXPORT(bool) _nc_Internal_Validation (FORM*);
 extern NCURSES_EXPORT(int) _nc_Set_Current_Field (FORM*, FIELD*);
 extern NCURSES_EXPORT(int) _nc_Position_Form_Cursor (FORM*);
+extern NCURSES_EXPORT(void) _nc_Unset_Current_Field(FORM *form);
 
 #if NCURSES_INTEROP_FUNCS
 extern NCURSES_EXPORT(FIELDTYPE *) _nc_TYPE_INTEGER(void);
@@ -220,11 +222,11 @@ extern NCURSES_EXPORT(wchar_t *) _nc_Widen_String(char *, int *);
 
 #ifdef TRACE
 
-#define returnField(code)	TRACE_RETURN(code,field)
-#define returnFieldPtr(code)	TRACE_RETURN(code,field_ptr)
-#define returnForm(code)	TRACE_RETURN(code,form)
-#define returnFieldType(code)	TRACE_RETURN(code,field_type)
-#define returnFormHook(code)	TRACE_RETURN(code,form_hook)
+#define returnField(code)	TRACE_RETURN1(code,field)
+#define returnFieldPtr(code)	TRACE_RETURN1(code,field_ptr)
+#define returnForm(code)	TRACE_RETURN1(code,form)
+#define returnFieldType(code)	TRACE_RETURN1(code,field_type)
+#define returnFormHook(code)	TRACE_RETURN1(code,form_hook)
 
 extern NCURSES_EXPORT(FIELD **)	    _nc_retrace_field_ptr (FIELD **);
 extern NCURSES_EXPORT(FIELD *)	    _nc_retrace_field (FIELD *);

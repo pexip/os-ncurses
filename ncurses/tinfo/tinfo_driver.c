@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2008-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 2008-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -50,7 +50,7 @@
 # endif
 #endif
 
-MODULE_ID("$Id: tinfo_driver.c,v 1.38 2014/04/26 18:47:20 juergen Exp $")
+MODULE_ID("$Id: tinfo_driver.c,v 1.41 2016/09/10 20:14:56 tom Exp $")
 
 /*
  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
@@ -113,6 +113,9 @@ drv_Name(TERMINAL_CONTROL_BLOCK * TCB)
     return "tinfo";
 }
 
+#undef SETUP_FAIL
+#define SETUP_FAIL FALSE
+
 static bool
 drv_CanHandle(TERMINAL_CONTROL_BLOCK * TCB, const char *tname, int *errret)
 {
@@ -121,6 +124,7 @@ drv_CanHandle(TERMINAL_CONTROL_BLOCK * TCB, const char *tname, int *errret)
     TERMINAL *termp;
     SCREEN *sp;
 
+    START_TRACE();
     T((T_CALLED("tinfo::drv_CanHandle(%p)"), TCB));
 
     assert(TCB != 0 && tname != 0);
@@ -154,8 +158,9 @@ drv_CanHandle(TERMINAL_CONTROL_BLOCK * TCB, const char *tname, int *errret)
     }
     result = TRUE;
 #if !USE_REENTRANT
-    strncpy(ttytype, termp->type.term_names, (size_t) NAMESIZE - 1);
-    ttytype[NAMESIZE - 1] = '\0';
+#define MY_SIZE (size_t) NAMESIZE - 1
+    _nc_STRNCPY(ttytype, termp->type.term_names, MY_SIZE);
+    ttytype[MY_SIZE] = '\0';
 #endif
 
     if (command_character)
@@ -1186,7 +1191,7 @@ drv_read(TERMINAL_CONTROL_BLOCK * TCB, int *buf)
     if ((pthread_self) && (pthread_kill) && (pthread_equal))
 	_nc_globals.read_thread = pthread_self();
 # endif
-    n = read(sp->_ifd, &c2, (size_t) 1);
+    n = (int) read(sp->_ifd, &c2, (size_t) 1);
 #if USE_PTHREADS_EINTR
     _nc_globals.read_thread = 0;
 #endif
@@ -1298,6 +1303,35 @@ drv_keyok(TERMINAL_CONTROL_BLOCK * TCB, int c, int flag)
     return (code);
 }
 
+static int
+drv_cursorSet(TERMINAL_CONTROL_BLOCK * TCB, int vis)
+{
+    SCREEN *sp;
+    int code = ERR;
+
+    AssertTCB();
+    SetSP();
+
+    T((T_CALLED("tinfo:drv_cursorSet(%p,%d)"), (void *) SP_PARM, vis));
+
+    if (SP_PARM != 0 && IsTermInfo(SP_PARM)) {
+	switch (vis) {
+	case 2:
+	    code = NCURSES_PUTP2_FLUSH("cursor_visible", cursor_visible);
+	    break;
+	case 1:
+	    code = NCURSES_PUTP2_FLUSH("cursor_normal", cursor_normal);
+	    break;
+	case 0:
+	    code = NCURSES_PUTP2_FLUSH("cursor_invisible", cursor_invisible);
+	    break;
+	}
+    } else {
+	code = ERR;
+    }
+    returnCode(code);
+}
+
 static bool
 drv_kyExist(TERMINAL_CONTROL_BLOCK * TCB, int key)
 {
@@ -1346,5 +1380,6 @@ NCURSES_EXPORT_VAR (TERM_DRIVER) _nc_TINFO_DRIVER = {
 	drv_nap,		/* nap */
 	drv_kpad,		/* kpad */
 	drv_keyok,		/* kyOk */
-	drv_kyExist		/* kyExist */
+	drv_kyExist,		/* kyExist */
+	drv_cursorSet		/* cursorSet */
 };

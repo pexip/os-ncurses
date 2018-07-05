@@ -1,5 +1,5 @@
 ##############################################################################
-# Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -25,7 +25,7 @@
 # use or other dealings in this Software without prior written               #
 # authorization.                                                             #
 ##############################################################################
-# $Id: dist.mk,v 1.1006 2014/09/13 10:38:28 tom Exp $
+# $Id: dist.mk,v 1.1134 2016/11/21 22:34:14 tom Exp $
 # Makefile for creating ncurses distributions.
 #
 # This only needs to be used directly as a makefile by developers, but
@@ -35,9 +35,9 @@
 SHELL = /bin/sh
 
 # These define the major/minor/patch versions of ncurses.
-NCURSES_MAJOR = 5
-NCURSES_MINOR = 9
-NCURSES_PATCH = 20140913
+NCURSES_MAJOR = 6
+NCURSES_MINOR = 0
+NCURSES_PATCH = 20161126
 
 # We don't append the patch to the version, since this only applies to releases
 VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
@@ -53,13 +53,13 @@ DUMP2	= $(DUMP) -nolist
 # gcc's file is "gnathtml.pl"
 GNATHTML= gnathtml
 
-# man2html 3.0.1 is a Perl script which assumes that pages are fixed size.
+# man2html is a Perl script which assumes that pages are fixed size.
 # Not all man programs agree with this assumption; some use half-spacing, which
 # has the effect of lengthening the text portion of the page -- so man2html
 # would remove some text.  The man program on Redhat 6.1 appears to work with
 # man2html if we set the top/bottom margins to 6 (the default is 7).  Newer
 # versions of 'man' leave no margin (and make it harder to sync with pages).
-MAN2HTML= man2html -botm=0 -topm=0 -cgiurl '$$title.$$section$$subsection.html'
+MAN2HTML= man2html -botm=0 -topm=0 -cgiurl '$$title.$$section$$subsection.html' -index
 
 ALL	= ANNOUNCE doc/html/announce.html doc/ncurses-intro.doc doc/hackguide.doc manhtml adahtml
 
@@ -133,8 +133,7 @@ manhtml:
 	   g=$${m}.html ;\
 	   if [ -f doc/html/$$g ]; then chmod +w doc/html/$$g; fi;\
 	   echo "Converting $$m to HTML" ;\
-	   echo '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">' > doc/html/man/$$g ;\
-	   echo '<!-- ' >> doc/html/man/$$g ;\
+	   echo '<!-- ' > doc/html/man/$$g ;\
 	   egrep '^.\\"[^#]' $$f | \
 	   	sed	-e 's/\$$/@/g' \
 			-e 's/^.../  */' \

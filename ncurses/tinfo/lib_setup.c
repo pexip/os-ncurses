@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -48,7 +48,7 @@
 #include <locale.h>
 #endif
 
-MODULE_ID("$Id: lib_setup.c,v 1.160 2014/04/26 18:47:20 juergen Exp $")
+MODULE_ID("$Id: lib_setup.c,v 1.167 2016/09/10 20:07:30 tom Exp $")
 
 /****************************************************************************
  *
@@ -305,8 +305,6 @@ _nc_get_screensize(SCREEN *sp,
     *colp = (int) columns;
 
     if (_nc_prescreen.use_env || _nc_prescreen.use_tioctl) {
-	int value;
-
 #ifdef __EMX__
 	{
 	    int screendata[2];
@@ -341,6 +339,8 @@ _nc_get_screensize(SCREEN *sp,
 #endif /* HAVE_SIZECHANGE */
 
 	if (_nc_prescreen.use_env) {
+	    int value;
+
 	    if (_nc_prescreen.use_tioctl) {
 		/*
 		 * If environment variables are used, update them.
@@ -494,8 +494,6 @@ _nc_setup_tinfo(const char *const tn, TERMTYPE *const tp)
 void
 _nc_tinfo_cmdch(TERMINAL * termp, int proto)
 {
-    unsigned i;
-    char CC;
     char *tmp;
 
     /*
@@ -504,7 +502,9 @@ _nc_tinfo_cmdch(TERMINAL * termp, int proto)
      * name as an environment variable - using the same symbol.
      */
     if ((tmp = getenv("CC")) != 0 && strlen(tmp) == 1) {
-	CC = *tmp;
+	unsigned i;
+	char CC = *tmp;
+
 	for_each_string(i, &(termp->type)) {
 	    for (tmp = termp->type.Strings[i]; tmp && *tmp; tmp++) {
 		if (UChar(*tmp) == proto)
@@ -574,10 +574,11 @@ NCURSES_EXPORT(int)
 _nc_locale_breaks_acs(TERMINAL * termp)
 {
     const char *env_name = "NCURSES_NO_UTF8_ACS";
-    char *env;
+    const char *env;
     int value;
     int result = 0;
 
+    T((T_CALLED("_nc_locale_breaks_acs:%d"), result));
     if (getenv(env_name) != 0) {
 	result = _nc_getenv_num(env_name);
     } else if ((value = tigetnum("U8")) >= 0) {
@@ -597,7 +598,7 @@ _nc_locale_breaks_acs(TERMINAL * termp)
 	    }
 	}
     }
-    return result;
+    returnCode(result);
 }
 
 NCURSES_EXPORT(int)
@@ -609,8 +610,6 @@ TINFO_SETUP_TERM(TERMINAL ** tp,
 {
 #ifdef USE_TERM_DRIVER
     TERMINAL_CONTROL_BLOCK *TCB = 0;
-#else
-    int status;
 #endif
     TERMINAL *termp;
     SCREEN *sp = 0;
@@ -691,6 +690,8 @@ TINFO_SETUP_TERM(TERMINAL ** tp,
 	my_tcb = typeCalloc(TERMINAL_CONTROL_BLOCK, 1);
 	termp = &(my_tcb->term);
 #else
+	int status;
+
 	termp = typeCalloc(TERMINAL, 1);
 #endif
 	if (termp == 0) {
@@ -705,7 +706,7 @@ TINFO_SETUP_TERM(TERMINAL ** tp,
 	    termp->Filedes = (short) Filedes;
 	    termp->_termname = strdup(tname);
 	} else {
-	    ret_error0(TGETENT_ERR,
+	    ret_error0(errret ? *errret : TGETENT_ERR,
 		       "Could not find any driver to handle this terminal.\n");
 	}
 #else
@@ -734,8 +735,9 @@ TINFO_SETUP_TERM(TERMINAL ** tp,
 	    }
 	}
 #if !USE_REENTRANT
-	strncpy(ttytype, termp->type.term_names, (size_t) (NAMESIZE - 1));
-	ttytype[NAMESIZE - 1] = '\0';
+#define MY_SIZE (size_t) (NAMESIZE - 1)
+	_nc_STRNCPY(ttytype, termp->type.term_names, MY_SIZE);
+	ttytype[MY_SIZE] = '\0';
 #endif
 
 	termp->Filedes = (short) Filedes;
@@ -807,29 +809,27 @@ TINFO_SETUP_TERM(TERMINAL ** tp,
 NCURSES_EXPORT(SCREEN *)
 new_prescr(void)
 {
-    static SCREEN *sp;
+    SCREEN *sp;
 
     START_TRACE();
     T((T_CALLED("new_prescr()")));
 
-    if (sp == 0) {
-	sp = _nc_alloc_screen_sp();
-	if (sp != 0) {
-	    sp->rsp = sp->rippedoff;
-	    sp->_filtered = _nc_prescreen.filter_mode;
-	    sp->_use_env = _nc_prescreen.use_env;
+    sp = _nc_alloc_screen_sp();
+    if (sp != 0) {
+	sp->rsp = sp->rippedoff;
+	sp->_filtered = _nc_prescreen.filter_mode;
+	sp->_use_env = _nc_prescreen.use_env;
 #if NCURSES_NO_PADDING
-	    sp->_no_padding = _nc_prescreen._no_padding;
+	sp->_no_padding = _nc_prescreen._no_padding;
 #endif
-	    sp->slk_format = 0;
-	    sp->_slk = 0;
-	    sp->_prescreen = TRUE;
-	    SP_PRE_INIT(sp);
+	sp->slk_format = 0;
+	sp->_slk = 0;
+	sp->_prescreen = TRUE;
+	SP_PRE_INIT(sp);
 #if USE_REENTRANT
-	    sp->_TABSIZE = _nc_prescreen._TABSIZE;
-	    sp->_ESCDELAY = _nc_prescreen._ESCDELAY;
+	sp->_TABSIZE = _nc_prescreen._TABSIZE;
+	sp->_ESCDELAY = _nc_prescreen._ESCDELAY;
 #endif
-	}
     }
     returnSP(sp);
 }
@@ -864,5 +864,6 @@ _nc_setupterm(NCURSES_CONST char *tname,
 NCURSES_EXPORT(int)
 setupterm(NCURSES_CONST char *tname, int Filedes, int *errret)
 {
+    START_TRACE();
     return _nc_setupterm(tname, Filedes, errret, FALSE);
 }

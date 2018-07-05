@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.92 2014/07/26 22:34:33 tom Exp $
+# $Id: Makefile.in,v 1.99 2016/10/22 00:13:20 tom Exp $
 ##############################################################################
-# Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -42,7 +42,7 @@
 # turn off _all_ suffix rules; we'll generate our own
 .SUFFIXES:
 
-SHELL		= /bin/sh
+SHELL		= @SHELL@
 VPATH		= @srcdir@
 THIS		= Makefile
 
@@ -67,7 +67,10 @@ includesubdir	= @includesubdir@
 
 INCLUDEDIR	= $(DESTDIR)$(includedir)$(includesubdir)
 
+PACKAGE		= @PACKAGE@
+
 LIBTOOL		= @LIBTOOL@
+LIBTOOL_OPTS	= @LIBTOOL_OPTS@
 LIBTOOL_CLEAN	= @LIB_CLEAN@
 LIBTOOL_COMPILE	= @LIB_COMPILE@
 LIBTOOL_LINK	= @LIB_LINK@
@@ -89,7 +92,7 @@ CPP		= @CPP@
 CFLAGS		= @CFLAGS@
 
 INCDIR		= $(top_srcdir)/include
-CPPFLAGS	= -DHAVE_CONFIG_H @CPPFLAGS@
+CPPFLAGS	= -DHAVE_CONFIG_H -I../progs @CPPFLAGS@
 
 CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
 
@@ -176,6 +179,7 @@ actual_tset      = `echo tset$x|      $(TRANSFORM)`
 
 # transformed names for comparing at runtime
 define_captoinfo = `echo captoinfo|   $(TRANSFORM)`
+define_clear     = `echo clear|       $(TRANSFORM)`
 define_infotocap = `echo infotocap|   $(TRANSFORM)`
 define_init      = `echo init|        $(TRANSFORM)`
 define_reset     = `echo reset|       $(TRANSFORM)`
@@ -185,9 +189,10 @@ transform.h :
 	echo "#define __TRANSFORM_H 1"					>>$@
 	echo "#include <progs.priv.h>"					>>$@
 	echo "extern bool same_program(const char *, const char *);"	>>$@
-	-sh -c 'if test -n "$x" ; then echo "#define SUFFIX_IGNORED \"$x\"">>$@; fi'
+	-$(SHELL) -c 'if test -n "$x" ; then echo "#define SUFFIX_IGNORED \"$x\"">>$@; fi'
 	echo "#define PROG_CAPTOINFO \"$(define_captoinfo)\""		>>$@
 	echo "#define PROG_INFOTOCAP \"$(define_infotocap)\""		>>$@
+	echo "#define PROG_CLEAR     \"$(define_clear)\""		>>$@
 	echo "#define PROG_RESET     \"$(define_reset)\""		>>$@
 	echo "#define PROG_INIT      \"$(define_init)\""		>>$@
 	echo "#endif /* __TRANSFORM_H */"				>>$@
@@ -245,7 +250,8 @@ toe$x: $(DEPS_TOE) $(DEPS_CURSES)
 	@ECHO_LD@ $(LINK) $(DEPS_TOE) $(LDFLAGS_TIC) -o $@
 
 DEPS_CLEAR = \
-	$(MODEL)/clear$o
+	$(MODEL)/clear$o \
+	$(MODEL)/clear_cmd$o
 
 clear$x: $(DEPS_CLEAR) $(DEPS_CURSES)
 	@ECHO_LD@ $(LINK) $(DEPS_CLEAR) $(LDFLAGS_TINFO) -o $@
@@ -258,6 +264,8 @@ tabs$x: $(DEPS_TABS) $(DEPS_TABS)
 
 DEPS_TPUT = \
 	$(MODEL)/tput$o \
+	$(MODEL)/clear_cmd$o \
+	$(MODEL)/reset_cmd$o \
 	$(MODEL)/tparm_type$o \
 	$(MODEL)/transform$o
 
@@ -273,13 +281,14 @@ infocmp$x: $(DEPS_INFOCMP) $(DEPS_CURSES)
 
 DEPS_TSET = \
 	$(MODEL)/tset$o \
+	$(MODEL)/reset_cmd$o \
 	$(MODEL)/transform$o
 
 tset$x: $(DEPS_TSET) $(DEPS_CURSES) transform.h
 	@ECHO_LD@ $(LINK) $(DEPS_TSET) $(LDFLAGS_TINFO) -o $@
 
 termsort.c: $(srcdir)/MKtermsort.sh
-	sh $(srcdir)/MKtermsort.sh $(AWK) $(srcdir)/../include/@TERMINFO_CAPS@ >$@
+	$(SHELL) $(srcdir)/MKtermsort.sh $(AWK) $(srcdir)/../include/@TERMINFO_CAPS@ >$@
 
 #
 # Utility productions start here
@@ -295,10 +304,10 @@ mostlyclean ::
 	-rm -f core tags TAGS *~ *.bak *.i *.ln *.atac trace
 
 clean :: mostlyclean
-	-sh -c "if test -n '$x' ; then $(MAKE) clean x=''; fi"
+	-$(SHELL) -c "if test -n '$x' ; then $(MAKE) clean x=''; fi"
 	-rm -f $(AUTO_SRC)
 	-rm -f $(PROGS)
-	-rm -rf .libs
+	-rm -rf .libs *.dSYM
 
 distclean :: clean
 	-rm -f Makefile

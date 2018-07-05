@@ -1,6 +1,6 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,7 +27,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: infocmp.1m,v 1.54 2014/03/29 23:18:29 tom Exp $
+.\" $Id: infocmp.1m,v 1.59 2016/10/22 19:54:35 tom Exp $
 .TH @INFOCMP@ 1M ""
 .ds n 5
 .de bP
@@ -50,6 +50,7 @@ L\
 T\
 U\
 V\
+W\
 c\
 d\
 e\
@@ -65,7 +66,7 @@ u\
 x\
 \fR]
 .br
-      [\fB\-v\fR \fIn\fR] [\fB\-s d\fR| \fBi\fR| \fBl\fR| \fBc\fR] [\fB\-R \fR\fBsubset\fR]
+      [\fB\-v\fR \fIn\fR] [\fB\-s d\fR| \fBi\fR| \fBl\fR| \fBc\fR] [\fB\-Q\fR \fIn\fR] [\fB\-R \fR\fBsubset\fR]
 .br
       [\fB\-w\fR\ \fIwidth\fR] [\fB\-A\fR\ \fIdirectory\fR] [\fB\-B\fR\ \fIdirectory\fR]
 .br
@@ -137,7 +138,7 @@ These should be edited by hand.
 For best results when converting to \fBtermcap\fP format,
 you should use both \fB\-C\fP and \fB\-r\fP.
 Normally a termcap description is limited to 1023 bytes.
-@INFOCMP@ trims away less essential parts to make it fit.
+\fB@INFOCMP@\fP trims away less essential parts to make it fit.
 If you are converting to one of the (rare) termcap implementations
 which accept an unlimited size of termcap,
 you may want to add the \fB\-T\fP option.
@@ -234,7 +235,7 @@ superfluous.
 were not needed.
 .SS Changing Databases [\-A \fIdirectory\fR] [\-B \fIdirectory\fR]
 Like other \fBncurses\fP utilities,
-@INFOCMP@ looks for the terminal descriptions in several places.
+\fB@INFOCMP@\fP looks for the terminal descriptions in several places.
 You can use the \fBTERMINFO\fP and \fBTERMINFO_DIRS\fP environment variables
 to override the compiled-in default list of places to search
 (see \fBcurses\fP(3X) for details).
@@ -319,7 +320,11 @@ rather than their decimal equivalents.
 .TP 5
 \fB\-i\fR
 Analyze the initialization (\fBis1\fR, \fBis2\fR, \fBis3\fR), and reset
-(\fBrs1\fR, \fBrs2\fR, \fBrs3\fR), strings in the entry.
+(\fBrs1\fR, \fBrs2\fR, \fBrs3\fR), strings in the entry,
+as well as those used for starting/stopping cursor-positioning mode
+(\fBsmcup\fP, \fBrmcup\fP) as well as starting/stopping keymap mode
+(\fBsmkx\fP, \fBrmkx\fP).
+.IP
 For each string, the
 code tries to analyze it into actions in terms of the other capabilities in the
 entry, certain X3.64/ISO 6429/ECMA\-48 capabilities, and certain DEC VT-series
@@ -329,9 +334,9 @@ Each report line consists
 of the capability name, followed by a colon and space, followed by a printable
 expansion of the capability string with sections matching recognized actions
 translated into {}-bracketed descriptions.
+.IP
 Here is a list of the DEC/ANSI
 special sequences recognized:
-i.
 .TS
 center tab(/) ;
 l l
@@ -386,9 +391,31 @@ Set output format to terminfo.
 \fB\-p\fR
 Ignore padding specifications when comparing strings.
 .TP 5
+\fB\-Q\fR \fIn\fR
+Rather than show source in terminfo (text) format,
+print the compiled (binary) format in hexadecimal or base64 form,
+depending on the option's value:
+.RS 8
+.TP 3
+1
+hexadecimal
+.TP 3
+2
+base64
+.TP 3
+3
+hexadecimal and base64
+.RE
+.TP 5
 \fB\-q\fR
+This makes the output a little shorter:
+.RS
+.bP
 Make the comparison listing shorter by omitting subheadings, and using
 "\-" for absent capabilities, "@" for canceled rather than "NULL".
+.bP
+Omit the "Reconstructed from" comment for source listings.
+.RE
 .TP 5
 \fB\-R\fR\fIsubset\fR
 Restrict output to a given subset.
@@ -396,6 +423,7 @@ This option is for use with archaic
 versions of terminfo like those on SVr1, Ultrix, or HP/UX that do not support
 the full set of SVR4/XSI Curses terminfo; and variants such as AIX
 that have their own extensions incompatible with SVr4/XSI.
+.IP
 Available terminfo
 subsets are "SVr1", "Ultrix", "HP", and "AIX"; see \fBterminfo\fR(\*n) for
 details.
@@ -449,6 +477,10 @@ reports the version of ncurses which was used in this program, and exits.
 \fB\-v\fR \fIn\fR
 prints out tracing information on standard error as the program runs.
 Higher values of n induce greater verbosity.
+.TP
+\fB\-W\fR
+By itself, the \fB\-w\fP option will not force long strings to be wrapped.
+Use the \fB\-W\fP option to do this.
 .TP 5
 \fB\-w\fR \fIwidth\fR
 changes the output to \fIwidth\fR characters.

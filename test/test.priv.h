@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,7 +29,7 @@
 /****************************************************************************
  *  Author: Thomas E. Dickey                    1996-on                     *
  ****************************************************************************/
-/* $Id: test.priv.h,v 1.130 2014/09/05 08:45:09 tom Exp $ */
+/* $Id: test.priv.h,v 1.138 2016/09/10 23:42:33 tom Exp $ */
 
 #ifndef __TEST_PRIV_H
 #define __TEST_PRIV_H 1
@@ -62,6 +62,9 @@
 #define HAVE_ASSUME_DEFAULT_COLORS 0
 #endif
 
+#ifndef HAVE_BSD_STRING_H
+#define HAVE_BSD_STRING_H 0
+#endif
 #ifndef HAVE_CURSES_VERSION
 #define HAVE_CURSES_VERSION 0
 #endif
@@ -118,6 +121,10 @@
 #define HAVE_LIBPANEL 0
 #endif
 
+#ifndef HAVE_LANGINFO_CODESET
+#define HAVE_LANGINFO_CODESET 0
+#endif
+
 #ifndef HAVE_LOCALE_H
 #define HAVE_LOCALE_H 0
 #endif
@@ -156,6 +163,10 @@
 
 #ifndef HAVE_RESIZE_TERM
 #define HAVE_RESIZE_TERM 0
+#endif
+
+#ifndef HAVE_RESTARTTERM
+#define HAVE_RESTARTTERM 0
 #endif
 
 #ifndef HAVE_RIPOFFLINE
@@ -539,10 +550,65 @@ extern int optind;
 #define KEY_MIN 256		/* not defined in Solaris 8 */
 #endif
 
+/* from nc_string.h, to make this stand alone */
+#if HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
+
+#ifdef __cplusplus
+#define NCURSES_VOID		/* nothing */
+#else
+#define NCURSES_VOID (void)
+#endif
+
+#ifndef HAVE_STRLCAT
+#define HAVE_STRLCAT 0
+#endif
+
+#ifndef HAVE_STRLCPY
+#define HAVE_STRLCPY 0
+#endif
+
+#ifndef HAVE_SNPRINTF
+#define HAVE_SNPRINTF 0
+#endif
+
+#ifndef USE_STRING_HACKS
+#define USE_STRING_HACKS 0
+#endif
+
+#if USE_STRING_HACKS && HAVE_STRLCAT
+#define _nc_STRCAT(d,s,n)	NCURSES_VOID strlcat((d),(s),NCURSES_CAST(size_t,n))
+#define _nc_STRNCAT(d,s,m,n)	NCURSES_VOID strlcat((d),(s),NCURSES_CAST(size_t,m))
+#else
+#define _nc_STRCAT(d,s,n)	NCURSES_VOID strcat((d),(s))
+#define _nc_STRNCAT(d,s,m,n)	NCURSES_VOID strncat((d),(s),(n))
+#endif
+
+#if USE_STRING_HACKS && HAVE_STRLCPY
+#define _nc_STRCPY(d,s,n)	NCURSES_VOID strlcpy((d),(s),NCURSES_CAST(size_t,n))
+#define _nc_STRNCPY(d,s,n)	NCURSES_VOID strlcpy((d),(s),NCURSES_CAST(size_t,n))
+#else
+#define _nc_STRCPY(d,s,n)	NCURSES_VOID strcpy((d),(s))
+#define _nc_STRNCPY(d,s,n)	NCURSES_VOID strncpy((d),(s),(n))
+#endif
+
+#if USE_STRING_HACKS && HAVE_SNPRINTF
+#define _nc_SPRINTF             NCURSES_VOID snprintf
+#define _nc_SLIMIT(n)           NCURSES_CAST(size_t,n),
+#else
+#define _nc_SPRINTF             NCURSES_VOID sprintf
+#define _nc_SLIMIT(n)		/* nothing */
+#endif
+
 #ifdef DECL_CURSES_DATA_BOOLNAMES
 extern char *boolnames[], *boolcodes[], *boolfnames[];
 extern char *numnames[], *numcodes[], *numfnames[];
 extern char *strnames[], *strcodes[], *strfnames[];
+#endif
+
+#ifdef DECL_CURSES_DATA_TTYTYPE
+#define ttytype termname()
 #endif
 
 #define colored_chtype(ch, attr, pair) \
@@ -683,7 +749,7 @@ extern char *strnames[], *strcodes[], *strfnames[];
 #define EXIT_FAILURE 1
 #endif
 
-#if defined(__MINGW32__)
+#if defined(__MINGW32__) || defined(USE_WIN32CON_DRIVER)
 
 #if defined(PDCURSES)
 #ifdef WINVER

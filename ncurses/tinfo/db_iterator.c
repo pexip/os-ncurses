@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2006-2012,2013 Free Software Foundation, Inc.              *
+ * Copyright (c) 2006-2014,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -43,7 +43,7 @@
 #include <hashed_db.h>
 #endif
 
-MODULE_ID("$Id: db_iterator.c,v 1.38 2013/12/14 21:23:20 tom Exp $")
+MODULE_ID("$Id: db_iterator.c,v 1.40 2016/05/28 23:22:52 tom Exp $")
 
 #define HaveTicDirectory _nc_globals.have_tic_directory
 #define KeepTicDirectory _nc_globals.keep_tic_directory
@@ -187,7 +187,7 @@ _nc_tic_dir(const char *path)
 	    HaveTicDirectory = TRUE;
 	} else if (HaveTicDirectory == 0) {
 	    if (use_terminfo_vars()) {
-		char *envp;
+		const char *envp;
 		if ((envp = getenv("TERMINFO")) != 0)
 		    return _nc_tic_dir(envp);
 	    }
@@ -260,7 +260,7 @@ _nc_first_db(DBDIRS * state, int *offset)
 	size_t blobsize = 0;
 	const char *values[dbdLAST];
 	struct stat *my_stat;
-	int j, k;
+	int j;
 
 	if (cache_has_expired)
 	    free_cache();
@@ -330,7 +330,7 @@ _nc_first_db(DBDIRS * state, int *offset)
 	    my_list = typeCalloc(char *, blobsize);
 	    my_stat = typeCalloc(struct stat, blobsize);
 	    if (my_list != 0 && my_stat != 0) {
-		k = 0;
+		int k = 0;
 		my_list[k++] = my_blob;
 		for (j = 0; my_blob[j] != '\0'; ++j) {
 		    if (my_blob[j] == NCURSES_PATHSEP) {

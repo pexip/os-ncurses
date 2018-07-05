@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -34,13 +34,19 @@
 /*
  * TODO - GetMousePos(POINT * result) from ntconio.c
  * TODO - implement nodelay
- * TODO - implement flash
- * TODO - improve screen-repainting, using implied wraparound
- * TODO - if non-buffered, change buffer size (temporarily) to window-size - SetConsoleScreenBufferSize
+ * TODO - improve screen-repainting performance, using implied wraparound to reduce write's
+ * TODO - make it optional whether screen is restored or not when non-buffered
  */
 
 #include <curses.priv.h>
+
+#ifdef __MINGW32__
 #include <tchar.h>
+#else
+#include <windows.h>
+#include <wchar.h>
+#endif
+
 #include <io.h>
 
 #define PSAPI_VERSION 2
@@ -48,7 +54,7 @@
 
 #define CUR my_term.type.
 
-MODULE_ID("$Id: win_driver.c,v 1.43 2014/08/09 20:31:40 tom Exp $")
+MODULE_ID("$Id: win_driver.c,v 1.56 2016/09/17 22:02:44 tom Exp $")
 
 #ifndef __GNUC__
 #  error We need GCC to compile for MinGW
@@ -60,7 +66,8 @@ MODULE_ID("$Id: win_driver.c,v 1.43 2014/08/09 20:31:40 tom Exp $")
 
 #define array_length(a) (sizeof(a)/sizeof(a[0]))
 
-#define okConsoleHandle(TCB) (TCB != 0 && CON.hdl != INVALID_HANDLE_VALUE)
+static bool InitConsole(void);
+static bool okConsoleHandle(TERMINAL_CONTROL_BLOCK *);
 
 #define AssertTCB() assert(TCB != 0 && (TCB->magic == WINMAGIC))
 #define SetSP()     assert(TCB->csp != 0); sp = TCB->csp; (void) sp
@@ -68,6 +75,14 @@ MODULE_ID("$Id: win_driver.c,v 1.43 2014/08/09 20:31:40 tom Exp $")
 #define GenMap(vKey,key) MAKELONG(key, vKey)
 
 #define AdjustY() (CON.buffered ? 0 : (int) CON.SBI.srWindow.Top)
+
+#if USE_WIDEC_SUPPORT
+#define write_screen WriteConsoleOutputW
+#define read_screen  ReadConsoleOutputW
+#else
+#define write_screen WriteConsoleOutput
+#define read_screen  ReadConsoleOutput
+#endif
 
 static const LONG keylist[] =
 {
@@ -82,14 +97,27 @@ static const LONG keylist[] =
     GenMap(VK_DELETE, KEY_DC),
     GenMap(VK_INSERT, KEY_IC)
 };
+static const LONG ansi_keys[] =
+{
+    GenMap(VK_PRIOR, 'I'),
+    GenMap(VK_NEXT, 'Q'),
+    GenMap(VK_END, 'O'),
+    GenMap(VK_HOME, 'H'),
+    GenMap(VK_LEFT, 'K'),
+    GenMap(VK_UP, 'H'),
+    GenMap(VK_RIGHT, 'M'),
+    GenMap(VK_DOWN, 'P'),
+    GenMap(VK_DELETE, 'S'),
+    GenMap(VK_INSERT, 'R')
+};
 #define N_INI ((int)array_length(keylist))
 #define FKEYS 24
 #define MAPSIZE (FKEYS + N_INI)
 #define NUMPAIRS 64
 
-/*   A process can only have a single console, so it's save
+/*   A process can only have a single console, so it's safe
      to maintain all the information about it in a single
-     static scructure.
+     static structure.
  */
 static struct {
     BOOL initialized;
@@ -103,6 +131,7 @@ static struct {
     HANDLE hdl;
     HANDLE lastOut;
     int numButtons;
+    DWORD ansi_map[MAPSIZE];
     DWORD map[MAPSIZE];
     DWORD rmap[MAPSIZE];
     WORD pairs[NUMPAIRS];
@@ -111,6 +140,8 @@ static struct {
     COORD save_size;
     SMALL_RECT save_region;
     CONSOLE_SCREEN_BUFFER_INFO SBI;
+    CONSOLE_SCREEN_BUFFER_INFO save_SBI;
+    CONSOLE_CURSOR_INFO save_CI;
 } CON;
 
 static BOOL console_initialized = FALSE;
@@ -130,6 +161,11 @@ MapColor(bool fore, int color)
     return (WORD) a;
 }
 
+#define RevAttr(attr) \
+	       (WORD) (((attr) & 0xff00) | \
+		      ((((attr) & 0x07) << 4) | \
+		       (((attr) & 0x70) >> 4)))
+
 static WORD
 MapAttr(WORD res, attr_t ch)
 {
@@ -145,16 +181,11 @@ MapAttr(WORD res, attr_t ch)
     }
 
     if (ch & A_REVERSE) {
-	res = (WORD) ((res & 0xff00) |
-		      (((res & 0x07) << 4) |
-		       ((res & 0x70) >> 4)));
+	res = RevAttr(res);
     }
 
     if (ch & A_STANDOUT) {
-	res = (WORD) ((res & 0xff00) |
-		      (((res & 0x07) << 4) |
-		       ((res & 0x70) >> 4)) |
-		      BACKGROUND_INTENSITY);
+	res = RevAttr(res) | BACKGROUND_INTENSITY;
     }
 
     if (ch & A_BOLD)
@@ -189,11 +220,11 @@ dump_screen(const char *fn, int ln)
 
     bufferCoord.X = bufferCoord.Y = 0;
 
-    if (ReadConsoleOutput(CON.hdl,
-			  save_screen,
-			  save_size,
-			  bufferCoord,
-			  &save_region)) {
+    if (read_screen(CON.hdl,
+		    save_screen,
+		    save_size,
+		    bufferCoord,
+		    &save_region)) {
 	int i, j;
 	int ij = 0;
 	int k = 0;
@@ -272,7 +303,7 @@ con_write16(TERMINAL_CONTROL_BLOCK * TCB, int y, int x, cchar_t *str, int limit)
     rec.Right = (SHORT) (x + limit - 1);
     rec.Bottom = rec.Top;
 
-    return WriteConsoleOutputW(CON.hdl, ci, siz, loc, &rec);
+    return write_screen(CON.hdl, ci, siz, loc, &rec);
 }
 #define con_write(tcb, y, x, str, n) con_write16(tcb, y, x, str, n)
 #else
@@ -311,7 +342,7 @@ con_write8(TERMINAL_CONTROL_BLOCK * TCB, int y, int x, chtype *str, int n)
     rec.Right = (short) (x + n - 1);
     rec.Bottom = rec.Top;
 
-    return WriteConsoleOutput(CON.hdl, ci, siz, loc, &rec);
+    return write_screen(CON.hdl, ci, siz, loc, &rec);
 }
 #define con_write(tcb, y, x, str, n) con_write8(tcb, y, x, str, n)
 #endif
@@ -413,13 +444,14 @@ restore_original_screen(void)
 
     T(("... restoring %s", CON.window_only ? "window" : "entire buffer"));
 
-    bufferCoord.X = bufferCoord.Y = 0;
+    bufferCoord.X = (SHORT) (CON.window_only ? CON.SBI.srWindow.Left : 0);
+    bufferCoord.Y = (SHORT) (CON.window_only ? CON.SBI.srWindow.Top : 0);
 
-    if (WriteConsoleOutput(CON.hdl,
-			   CON.save_screen,
-			   CON.save_size,
-			   bufferCoord,
-			   &save_region)) {
+    if (write_screen(CON.hdl,
+		     CON.save_screen,
+		     CON.save_size,
+		     bufferCoord,
+		     &save_region)) {
 	result = TRUE;
 	mvcur(-1, -1, LINES - 2, 0);
 	T(("... restore original screen contents ok %dx%d (%d,%d - %d,%d)",
@@ -449,11 +481,9 @@ wcon_doupdate(TERMINAL_CONTROL_BLOCK * TCB)
     int y, nonempty, n, x0, x1, Width, Height;
     SCREEN *sp;
 
-    AssertTCB();
-    SetSP();
-
     T((T_CALLED("win32con::wcon_doupdate(%p)"), TCB));
     if (okConsoleHandle(TCB)) {
+	SetSP();
 
 	Width = screen_columns(sp);
 	Height = screen_lines(sp);
@@ -631,15 +661,57 @@ wcon_CanHandle(TERMINAL_CONTROL_BLOCK * TCB,
 
 static int
 wcon_dobeepflash(TERMINAL_CONTROL_BLOCK * TCB,
-		 int beepFlag GCC_UNUSED)
+		 int beepFlag)
 {
     SCREEN *sp;
-    int res = OK;
+    int res = ERR;
 
-    AssertTCB();
-    SetSP();
+    int high = (CON.SBI.srWindow.Bottom - CON.SBI.srWindow.Top + 1);
+    int wide = (CON.SBI.srWindow.Right - CON.SBI.srWindow.Left + 1);
+    int max_cells = (high * wide);
+    int i;
 
-    MessageBeep(MB_ICONWARNING);	/* MB_OK might be better */
+    CHAR_INFO this_screen[max_cells];
+    CHAR_INFO that_screen[max_cells];
+    COORD this_size;
+    SMALL_RECT this_region;
+    COORD bufferCoord;
+
+    if (okConsoleHandle(TCB)) {
+	SetSP();
+	this_region.Top = CON.SBI.srWindow.Top;
+	this_region.Left = CON.SBI.srWindow.Left;
+	this_region.Bottom = CON.SBI.srWindow.Bottom;
+	this_region.Right = CON.SBI.srWindow.Right;
+
+	this_size.X = (SHORT) wide;
+	this_size.Y = (SHORT) high;
+
+	bufferCoord.X = this_region.Left;
+	bufferCoord.Y = this_region.Top;
+
+	if (!beepFlag &&
+	    read_screen(CON.hdl,
+			this_screen,
+			this_size,
+			bufferCoord,
+			&this_region)) {
+
+	    memcpy(that_screen, this_screen, sizeof(that_screen));
+
+	    for (i = 0; i < max_cells; i++) {
+		that_screen[i].Attributes = RevAttr(that_screen[i].Attributes);
+	    }
+
+	    write_screen(CON.hdl, that_screen, this_size, bufferCoord, &this_region);
+	    Sleep(200);
+	    write_screen(CON.hdl, this_screen, this_size, bufferCoord, &this_region);
+
+	} else {
+	    MessageBeep(MB_ICONWARNING);	/* MB_OK might be better */
+	}
+	res = OK;
+    }
     return res;
 }
 
@@ -710,8 +782,6 @@ wcon_setcolor(TERMINAL_CONTROL_BLOCK * TCB,
 	      int color,
 	      int (*outc) (SCREEN *, int) GCC_UNUSED)
 {
-    AssertTCB();
-
     if (okConsoleHandle(TCB)) {
 	WORD a = MapColor(fore, color);
 	a |= (WORD) ((CON.SBI.wAttributes) & (fore ? 0xfff8 : 0xff8f));
@@ -725,7 +795,6 @@ wcon_rescol(TERMINAL_CONTROL_BLOCK * TCB)
 {
     bool res = FALSE;
 
-    AssertTCB();
     if (okConsoleHandle(TCB)) {
 	WORD a = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN;
 	SetConsoleTextAttribute(CON.hdl, a);
@@ -751,8 +820,6 @@ static int
 wcon_size(TERMINAL_CONTROL_BLOCK * TCB, int *Lines, int *Cols)
 {
     int result = ERR;
-
-    AssertTCB();
 
     T((T_CALLED("win32con::wcon_size(%p)"), TCB));
 
@@ -788,65 +855,143 @@ wcon_sgmode(TERMINAL_CONTROL_BLOCK * TCB, int setFlag, TTY * buf)
     DWORD dwFlag = 0;
     tcflag_t iflag;
     tcflag_t lflag;
+    int result = ERR;
 
-    AssertTCB();
+    if (buf != NULL && okConsoleHandle(TCB)) {
 
-    if (TCB == 0 || buf == NULL)
-	return ERR;
+	if (setFlag) {
+	    iflag = buf->c_iflag;
+	    lflag = buf->c_lflag;
 
-    if (setFlag) {
-	iflag = buf->c_iflag;
-	lflag = buf->c_lflag;
+	    GetConsoleMode(CON.inp, &dwFlag);
 
-	GetConsoleMode(CON.inp, &dwFlag);
+	    if (lflag & ICANON)
+		dwFlag |= ENABLE_LINE_INPUT;
+	    else
+		dwFlag &= (DWORD) (~ENABLE_LINE_INPUT);
 
-	if (lflag & ICANON)
-	    dwFlag |= ENABLE_LINE_INPUT;
-	else
-	    dwFlag &= (DWORD) (~ENABLE_LINE_INPUT);
+	    if (lflag & ECHO)
+		dwFlag |= ENABLE_ECHO_INPUT;
+	    else
+		dwFlag &= (DWORD) (~ENABLE_ECHO_INPUT);
 
-	if (lflag & ECHO)
-	    dwFlag |= ENABLE_ECHO_INPUT;
-	else
-	    dwFlag &= (DWORD) (~ENABLE_ECHO_INPUT);
+	    if (iflag & BRKINT)
+		dwFlag |= ENABLE_PROCESSED_INPUT;
+	    else
+		dwFlag &= (DWORD) (~ENABLE_PROCESSED_INPUT);
 
-	if (iflag & BRKINT)
-	    dwFlag |= ENABLE_PROCESSED_INPUT;
-	else
-	    dwFlag &= (DWORD) (~ENABLE_PROCESSED_INPUT);
+	    dwFlag |= ENABLE_MOUSE_INPUT;
 
-	dwFlag |= ENABLE_MOUSE_INPUT;
+	    buf->c_iflag = iflag;
+	    buf->c_lflag = lflag;
+	    SetConsoleMode(CON.inp, dwFlag);
+	    TCB->term.Nttyb = *buf;
+	} else {
+	    iflag = TCB->term.Nttyb.c_iflag;
+	    lflag = TCB->term.Nttyb.c_lflag;
+	    GetConsoleMode(CON.inp, &dwFlag);
 
-	buf->c_iflag = iflag;
-	buf->c_lflag = lflag;
-	SetConsoleMode(CON.inp, dwFlag);
-	TCB->term.Nttyb = *buf;
-    } else {
-	iflag = TCB->term.Nttyb.c_iflag;
-	lflag = TCB->term.Nttyb.c_lflag;
-	GetConsoleMode(CON.inp, &dwFlag);
+	    if (dwFlag & ENABLE_LINE_INPUT)
+		lflag |= ICANON;
+	    else
+		lflag &= (tcflag_t) (~ICANON);
 
-	if (dwFlag & ENABLE_LINE_INPUT)
-	    lflag |= ICANON;
-	else
-	    lflag &= (tcflag_t) (~ICANON);
+	    if (dwFlag & ENABLE_ECHO_INPUT)
+		lflag |= ECHO;
+	    else
+		lflag &= (tcflag_t) (~ECHO);
 
-	if (dwFlag & ENABLE_ECHO_INPUT)
-	    lflag |= ECHO;
-	else
-	    lflag &= (tcflag_t) (~ECHO);
+	    if (dwFlag & ENABLE_PROCESSED_INPUT)
+		iflag |= BRKINT;
+	    else
+		iflag &= (tcflag_t) (~BRKINT);
 
-	if (dwFlag & ENABLE_PROCESSED_INPUT)
-	    iflag |= BRKINT;
-	else
-	    iflag &= (tcflag_t) (~BRKINT);
+	    TCB->term.Nttyb.c_iflag = iflag;
+	    TCB->term.Nttyb.c_lflag = lflag;
 
-	TCB->term.Nttyb.c_iflag = iflag;
-	TCB->term.Nttyb.c_lflag = lflag;
-
-	*buf = TCB->term.Nttyb;
+	    *buf = TCB->term.Nttyb;
+	}
+	result = OK;
     }
-    return OK;
+    return result;
+}
+
+#define MIN_WIDE 80
+#define MIN_HIGH 24
+
+/*
+ * In "normal" mode, reset the buffer- and window-sizes back to their original values.
+ */
+static void
+set_scrollback(bool normal, CONSOLE_SCREEN_BUFFER_INFO * info)
+{
+    SMALL_RECT rect;
+    COORD coord;
+    bool changed = FALSE;
+
+    T((T_CALLED("win32con::set_scrollback(%s)"),
+       (normal
+	? "normal"
+	: "application")));
+
+    T(("... SBI.srWindow %d,%d .. %d,%d",
+       info->srWindow.Top,
+       info->srWindow.Left,
+       info->srWindow.Bottom,
+       info->srWindow.Right));
+    T(("... SBI.dwSize %dx%d",
+       info->dwSize.Y,
+       info->dwSize.X));
+
+    if (normal) {
+	rect = info->srWindow;
+	coord = info->dwSize;
+	if (memcmp(info, &CON.SBI, sizeof(*info)) != 0) {
+	    changed = TRUE;
+	    CON.SBI = *info;
+	}
+    } else {
+	int high = info->srWindow.Bottom - info->srWindow.Top + 1;
+	int wide = info->srWindow.Right - info->srWindow.Left + 1;
+
+	if (high < MIN_HIGH) {
+	    T(("... height %d < %d", high, MIN_HIGH));
+	    high = MIN_HIGH;
+	    changed = TRUE;
+	}
+	if (wide < MIN_WIDE) {
+	    T(("... width %d < %d", wide, MIN_WIDE));
+	    wide = MIN_WIDE;
+	    changed = TRUE;
+	}
+
+	rect.Left =
+	    rect.Top = 0;
+	rect.Right = (SHORT) (wide - 1);
+	rect.Bottom = (SHORT) (high - 1);
+
+	coord.X = (SHORT) wide;
+	coord.Y = (SHORT) high;
+
+	if (info->dwSize.Y != high ||
+	    info->dwSize.X != wide ||
+	    info->srWindow.Top != 0 ||
+	    info->srWindow.Left != 0) {
+	    changed = TRUE;
+	}
+
+    }
+
+    if (changed) {
+	T(("... coord %d,%d", coord.Y, coord.X));
+	T(("... rect %d,%d - %d,%d",
+	   rect.Top, rect.Left,
+	   rect.Bottom, rect.Right));
+	SetConsoleScreenBufferSize(CON.hdl, coord);	/* dwSize */
+	SetConsoleWindowInfo(CON.hdl, TRUE, &rect);	/* srWindow */
+	get_SBI();
+    }
+    returnVoid;
 }
 
 static int
@@ -856,51 +1001,59 @@ wcon_mode(TERMINAL_CONTROL_BLOCK * TCB, int progFlag, int defFlag)
     TERMINAL *_term = (TERMINAL *) TCB;
     int code = ERR;
 
-    AssertTCB();
-    sp = TCB->csp;
+    if (okConsoleHandle(TCB)) {
+	sp = TCB->csp;
 
-    T((T_CALLED("win32con::wcon_mode(%p, prog=%d, def=%d)"), TCB, progFlag, defFlag));
-    CON.progMode = progFlag;
-    CON.lastOut = progFlag ? CON.hdl : CON.out;
-    SetConsoleActiveScreenBuffer(CON.lastOut);
+	T((T_CALLED("win32con::wcon_mode(%p, prog=%d, def=%d)"),
+	   TCB, progFlag, defFlag));
 
-    if (progFlag) /* prog mode */  {
-	if (defFlag) {
-	    if ((wcon_sgmode(TCB, FALSE, &(_term->Nttyb)) == OK)) {
-		_term->Nttyb.c_oflag &= (tcflag_t) (~OFLAGS_TABS);
-		code = OK;
-	    }
-	} else {
-	    /* reset_prog_mode */
-	    if (wcon_sgmode(TCB, TRUE, &(_term->Nttyb)) == OK) {
-		if (sp) {
-		    if (sp->_keypad_on)
-			_nc_keypad(sp, TRUE);
+	CON.progMode = progFlag;
+	CON.lastOut = progFlag ? CON.hdl : CON.out;
+	SetConsoleActiveScreenBuffer(CON.lastOut);
+
+	if (progFlag) /* prog mode */  {
+	    if (defFlag) {
+		if ((wcon_sgmode(TCB, FALSE, &(_term->Nttyb)) == OK)) {
+		    _term->Nttyb.c_oflag &= (tcflag_t) (~OFLAGS_TABS);
+		    code = OK;
 		}
-		code = OK;
+	    } else {
+		/* reset_prog_mode */
+		if (wcon_sgmode(TCB, TRUE, &(_term->Nttyb)) == OK) {
+		    if (sp) {
+			if (sp->_keypad_on)
+			    _nc_keypad(sp, TRUE);
+		    }
+		    if (!CON.buffered) {
+			set_scrollback(FALSE, &CON.SBI);
+		    }
+		    code = OK;
+		}
+	    }
+	    T(("... buffered:%d, clear:%d", CON.buffered, CurScreen(sp)->_clear));
+	} else {		/* shell mode */
+	    if (defFlag) {
+		/* def_shell_mode */
+		if (wcon_sgmode(TCB, FALSE, &(_term->Ottyb)) == OK) {
+		    code = OK;
+		}
+	    } else {
+		/* reset_shell_mode */
+		if (sp) {
+		    _nc_keypad(sp, FALSE);
+		    NCURSES_SP_NAME(_nc_flush) (sp);
+		}
+		code = wcon_sgmode(TCB, TRUE, &(_term->Ottyb));
+		if (!CON.buffered) {
+		    set_scrollback(TRUE, &CON.save_SBI);
+		    if (!restore_original_screen())
+			code = ERR;
+		}
+		SetConsoleCursorInfo(CON.hdl, &CON.save_CI);
 	    }
 	}
-	T(("... buffered:%d, clear:%d", CON.buffered, CurScreen(sp)->_clear));
-    } else {			/* shell mode */
-	if (defFlag) {
-	    /* def_shell_mode */
-	    if (wcon_sgmode(TCB, FALSE, &(_term->Ottyb)) == OK) {
-		code = OK;
-	    }
-	} else {
-	    /* reset_shell_mode */
-	    if (sp) {
-		_nc_keypad(sp, FALSE);
-		NCURSES_SP_NAME(_nc_flush) (sp);
-	    }
-	    code = wcon_sgmode(TCB, TRUE, &(_term->Ottyb));
-	    if (!CON.buffered) {
-		if (!restore_original_screen())
-		    code = ERR;
-	    }
-	}
-    }
 
+    }
     returnCode(code);
 }
 
@@ -955,6 +1108,29 @@ MapKey(WORD vKey)
     return code;
 }
 
+static int
+AnsiKey(WORD vKey)
+{
+    WORD nKey = 0;
+    void *res;
+    LONG key = GenMap(vKey, 0);
+    int code = -1;
+
+    res = bsearch(&key,
+		  CON.ansi_map,
+		  (size_t) (N_INI + FKEYS),
+		  sizeof(keylist[0]),
+		  keycompare);
+    if (res) {
+	key = *((LONG *) res);
+	nKey = LOWORD(key);
+	code = (int) (nKey & 0x7fff);
+	if (nKey & 0x8000)
+	    code = -code;
+    }
+    return code;
+}
+
 static void
 wcon_release(TERMINAL_CONTROL_BLOCK * TCB)
 {
@@ -982,7 +1158,8 @@ read_screen_data(void)
     want = (size_t) (CON.save_size.X * CON.save_size.Y);
 
     if ((CON.save_screen = malloc(want * sizeof(CHAR_INFO))) != 0) {
-	bufferCoord.X = bufferCoord.Y = 0;
+	bufferCoord.X = (SHORT) (CON.window_only ? CON.SBI.srWindow.Left : 0);
+	bufferCoord.Y = (SHORT) (CON.window_only ? CON.SBI.srWindow.Top : 0);
 
 	T(("... reading console %s %dx%d into %d,%d - %d,%d at %d,%d",
 	   CON.window_only ? "window" : "buffer",
@@ -994,11 +1171,11 @@ read_screen_data(void)
 	   bufferCoord.Y,
 	   bufferCoord.X));
 
-	if (ReadConsoleOutput(CON.hdl,
-			      CON.save_screen,
-			      CON.save_size,
-			      bufferCoord,
-			      &CON.save_region)) {
+	if (read_screen(CON.hdl,
+			CON.save_screen,
+			CON.save_size,
+			bufferCoord,
+			&CON.save_region)) {
 	    result = TRUE;
 	} else {
 	    T((" error %#lx", (unsigned long) GetLastError()));
@@ -1054,7 +1231,7 @@ wcon_init(TERMINAL_CONTROL_BLOCK * TCB)
     AssertTCB();
 
     if (TCB) {
-	if (CON.hdl == INVALID_HANDLE_VALUE) {
+	if (!InitConsole()) {
 	    returnVoid;
 	}
 
@@ -1086,12 +1263,13 @@ wcon_initpair(TERMINAL_CONTROL_BLOCK * TCB,
 {
     SCREEN *sp;
 
-    AssertTCB();
-    SetSP();
+    if (okConsoleHandle(TCB)) {
+	SetSP();
 
-    if ((pair > 0) && (pair < NUMPAIRS) && (f >= 0) && (f < 8)
-	&& (b >= 0) && (b < 8)) {
-	CON.pairs[pair] = MapColor(true, f) | MapColor(false, b);
+	if ((pair > 0) && (pair < NUMPAIRS) && (f >= 0) && (f < 8)
+	    && (b >= 0) && (b < 8)) {
+	    CON.pairs[pair] = MapColor(true, f) | MapColor(false, b);
+	}
     }
 }
 
@@ -1127,10 +1305,11 @@ wcon_initmouse(TERMINAL_CONTROL_BLOCK * TCB)
 {
     SCREEN *sp;
 
-    AssertTCB();
-    SetSP();
+    if (okConsoleHandle(TCB)) {
+	SetSP();
 
-    sp->_mouse_type = M_TERM_DRIVER;
+	sp->_mouse_type = M_TERM_DRIVER;
+    }
 }
 
 static int
@@ -1139,17 +1318,18 @@ wcon_testmouse(TERMINAL_CONTROL_BLOCK * TCB, int delay)
     int rc = 0;
     SCREEN *sp;
 
-    AssertTCB();
-    SetSP();
+    if (okConsoleHandle(TCB)) {
+	SetSP();
 
-    if (sp->_drv_mouse_head < sp->_drv_mouse_tail) {
-	rc = TW_MOUSE;
-    } else {
-	rc = TCBOf(sp)->drv->td_twait(TCBOf(sp),
-				      TWAIT_MASK,
-				      delay,
-				      (int *) 0
-				      EVENTLIST_2nd(evl));
+	if (sp->_drv_mouse_head < sp->_drv_mouse_tail) {
+	    rc = TW_MOUSE;
+	} else {
+	    rc = TCBOf(sp)->drv->td_twait(TCBOf(sp),
+					  TWAIT_MASK,
+					  delay,
+					  (int *) 0
+					  EVENTLIST_2nd(evl));
+	}
     }
 
     return rc;
@@ -1246,13 +1426,14 @@ wcon_initacs(TERMINAL_CONTROL_BLOCK * TCB,
     unsigned n;
 
     SCREEN *sp;
-    AssertTCB();
-    SetSP();
+    if (okConsoleHandle(TCB)) {
+	SetSP();
 
-    for (n = 0; n < SIZEOF(table); ++n) {
-	real_map[table[n].acs_code] = (chtype) table[n].use_code | A_ALTCHARSET;
-	if (sp != 0)
-	    sp->_screen_acs_map[table[n].acs_code] = TRUE;
+	for (n = 0; n < SIZEOF(table); ++n) {
+	    real_map[table[n].acs_code] = (chtype) table[n].use_code | A_ALTCHARSET;
+	    if (sp != 0)
+		sp->_screen_acs_map[table[n].acs_code] = TRUE;
+	}
     }
 }
 
@@ -1363,7 +1544,7 @@ console_twait(
 	diff = (int) tdiff(fstart, fend);
 	milliseconds = Adjust(milliseconds, diff);
 
-	if (!isImmed && milliseconds == 0)
+	if (!isImmed && milliseconds <= 0)
 	    break;
 
 	if (rc == WAIT_OBJECT_0) {
@@ -1381,7 +1562,7 @@ console_twait(
 				if (inp_rec.Event.KeyEvent.bKeyDown) {
 				    if (0 == ch) {
 					int nKey = MapKey(vk);
-					if ((nKey < 0) || FALSE == sp->_keypad_on) {
+					if (nKey < 0) {
 					    CONSUME();
 					    continue;
 					}
@@ -1403,7 +1584,9 @@ console_twait(
 				goto end;
 			    }
 			    continue;
+			    /* e.g., FOCUS_EVENT */
 			default:
+			    CONSUME();
 			    selectActiveHandle();
 			    continue;
 			}
@@ -1440,16 +1623,17 @@ wcon_twait(TERMINAL_CONTROL_BLOCK * TCB,
 	   EVENTLIST_2nd(_nc_eventlist * evl))
 {
     SCREEN *sp;
-    int code;
+    int code = 0;
 
-    AssertTCB();
-    SetSP();
+    if (okConsoleHandle(TCB)) {
+	SetSP();
 
-    code = console_twait(sp,
-			 CON.inp,
-			 mode,
-			 milliseconds,
-			 timeleft EVENTLIST_2nd(_nc_eventlist * evl));
+	code = console_twait(sp,
+			     CON.inp,
+			     mode,
+			     milliseconds,
+			     timeleft EVENTLIST_2nd(_nc_eventlist * evl));
+    }
     return code;
 }
 
@@ -1500,14 +1684,16 @@ static int
 wcon_read(TERMINAL_CONTROL_BLOCK * TCB, int *buf)
 {
     SCREEN *sp;
-    int n;
-
-    AssertTCB();
-    assert(buf);
-    SetSP();
+    int n = -1;
 
     T((T_CALLED("win32con::wcon_read(%p)"), TCB));
-    n = _nc_mingw_console_read(sp, CON.inp, buf);
+
+    assert(buf);
+    if (okConsoleHandle(TCB)) {
+	SetSP();
+
+	n = _nc_mingw_console_read(sp, CON.inp, buf);
+    }
     returnCode(n);
 }
 
@@ -1517,6 +1703,29 @@ wcon_nap(TERMINAL_CONTROL_BLOCK * TCB GCC_UNUSED, int ms)
     T((T_CALLED("win32con::wcon_nap(%p, %d)"), TCB, ms));
     Sleep((DWORD) ms);
     returnCode(OK);
+}
+
+static int
+wcon_cursorSet(TERMINAL_CONTROL_BLOCK * TCB GCC_UNUSED, int mode)
+{
+    int res = -1;
+
+    T((T_CALLED("win32con:wcon_cursorSet(%d)"), mode));
+    if (okConsoleHandle(TCB)) {
+	CONSOLE_CURSOR_INFO this_CI = CON.save_CI;
+	switch (mode) {
+	case 0:
+	    this_CI.bVisible = FALSE;
+	    break;
+	case 1:
+	    break;
+	case 2:
+	    this_CI.dwSize = 100;
+	    break;
+	}
+	SetConsoleCursorInfo(CON.hdl, &this_CI);
+    }
+    returnCode(res);
 }
 
 static bool
@@ -1548,12 +1757,14 @@ wcon_kpad(TERMINAL_CONTROL_BLOCK * TCB, int flag GCC_UNUSED)
     SCREEN *sp;
     int code = ERR;
 
-    AssertTCB();
-    SetSP();
-
     T((T_CALLED("win32con::wcon_kpad(%p, %d)"), TCB, flag));
-    if (sp) {
-	code = OK;
+
+    if (okConsoleHandle(TCB)) {
+	SetSP();
+
+	if (sp) {
+	    code = OK;
+	}
     }
     returnCode(code);
 }
@@ -1572,22 +1783,23 @@ wcon_keyok(TERMINAL_CONTROL_BLOCK * TCB,
 
     T((T_CALLED("win32con::wcon_keyok(%p, %d, %d)"), TCB, keycode, flag));
 
-    AssertTCB();
-    SetSP();
+    if (okConsoleHandle(TCB)) {
+	SetSP();
 
-    if (sp) {
-	res = bsearch(&key,
-		      CON.rmap,
-		      (size_t) (N_INI + FKEYS),
-		      sizeof(keylist[0]),
-		      rkeycompare);
-	if (res) {
-	    key = *((LONG *) res);
-	    vKey = HIWORD(key);
-	    nKey = (LOWORD(key)) & 0x7fff;
-	    if (!flag)
-		nKey |= 0x8000;
-	    *(LONG *) res = GenMap(vKey, nKey);
+	if (sp) {
+	    res = bsearch(&key,
+			  CON.rmap,
+			  (size_t) (N_INI + FKEYS),
+			  sizeof(keylist[0]),
+			  rkeycompare);
+	    if (res) {
+		key = *((LONG *) res);
+		vKey = HIWORD(key);
+		nKey = (LOWORD(key)) & 0x7fff;
+		if (!flag)
+		    nKey |= 0x8000;
+		*(LONG *) res = GenMap(vKey, nKey);
+	    }
 	}
     }
     returnCode(code);
@@ -1629,7 +1841,8 @@ NCURSES_EXPORT_VAR (TERM_DRIVER) _nc_WIN_DRIVER = {
 	wcon_nap,		/* nap */
 	wcon_kpad,		/* kpad */
 	wcon_keyok,		/* kyOk */
-	wcon_kyExist		/* kyExist */
+	wcon_kyExist,		/* kyExist */
+	wcon_cursorSet		/* cursorSet */
 };
 
 /* --------------------------------------------------------- */
@@ -1734,7 +1947,12 @@ _nc_mingw_isatty(int fd)
 {
     int result = 0;
 
-    if (_isatty(fd)) {
+#ifdef __MING32__
+#define SysISATTY(fd) _isatty(fd)
+#else
+#define SysISATTY(fd) isatty(fd)
+#endif
+    if (SysISATTY(fd)) {
 	result = 1;
     } else {
 #if WINVER >= 0x0600
@@ -1873,7 +2091,7 @@ _nc_mingw_console_read(
 			  HANDLE fd,
 			  int *buf)
 {
-    int n = 1;
+    int rc = -1;
     INPUT_RECORD inp_rec;
     BOOL b;
     DWORD nRead;
@@ -1888,23 +2106,36 @@ _nc_mingw_console_read(
 
     while ((b = ReadConsoleInput(fd, &inp_rec, 1, &nRead))) {
 	if (b && nRead > 0) {
+	    if (rc < 0)
+		rc = 0;
+	    rc = rc + (int) nRead;
 	    if (inp_rec.EventType == KEY_EVENT) {
 		if (!inp_rec.Event.KeyEvent.bKeyDown)
 		    continue;
 		*buf = (int) inp_rec.Event.KeyEvent.uChar.AsciiChar;
 		vk = inp_rec.Event.KeyEvent.wVirtualKeyCode;
-		if (*buf == 0) {
-		    if (sp->_keypad_on) {
-			*buf = MapKey(vk);
-			if (0 > (*buf))
-			    continue;
-			else
-			    break;
-		    } else
-			continue;
-		} else {	/* *buf != 0 */
-		    break;
+		/*
+		 * There are 24 virtual function-keys, and typically
+		 * 12 function-keys on a keyboard.  Use the shift-modifier
+		 * to provide the remaining 12 keys.
+		 */
+		if (vk >= VK_F1 && vk <= VK_F12) {
+		    if (inp_rec.Event.KeyEvent.dwControlKeyState & SHIFT_PRESSED) {
+			vk = (WORD) (vk + 12);
+		    }
 		}
+		if (*buf == 0) {
+		    int key = MapKey(vk);
+		    if (key < 0)
+			continue;
+		    if (sp->_keypad_on) {
+			*buf = key;
+		    } else {
+			ungetch('\0');
+			*buf = AnsiKey(vk);
+		    }
+		}
+		break;
 	    } else if (inp_rec.EventType == MOUSE_EVENT) {
 		if (handle_mouse(sp,
 				 inp_rec.Event.MouseEvent)) {
@@ -1915,13 +2146,13 @@ _nc_mingw_console_read(
 	    continue;
 	}
     }
-    returnCode(n);
+    returnCode(rc);
 }
 
-static
-__attribute__((constructor))
-     void _enter_console(void)
+static bool
+InitConsole(void)
 {
+    /* initalize once, or not at all */
     if (!console_initialized) {
 	int i;
 	DWORD num_buttons;
@@ -1935,14 +2166,23 @@ __attribute__((constructor))
 	}
 
 	for (i = 0; i < (N_INI + FKEYS); i++) {
-	    if (i < N_INI)
+	    if (i < N_INI) {
 		CON.rmap[i] = CON.map[i] =
 		    (DWORD) keylist[i];
-	    else
+		CON.ansi_map[i] = (DWORD) ansi_keys[i];
+	    } else {
 		CON.rmap[i] = CON.map[i] =
 		    (DWORD) GenMap((VK_F1 + (i - N_INI)),
 				   (KEY_F(1) + (i - N_INI)));
+		CON.ansi_map[i] =
+		    (DWORD) GenMap((VK_F1 + (i - N_INI)),
+				   (';' + (i - N_INI)));
+	    }
 	}
+	qsort(CON.ansi_map,
+	      (size_t) (MAPSIZE),
+	      sizeof(keylist[0]),
+	      keycompare);
 	qsort(CON.map,
 	      (size_t) (MAPSIZE),
 	      sizeof(keylist[0]),
@@ -1986,11 +2226,39 @@ __attribute__((constructor))
 	if (CON.hdl != INVALID_HANDLE_VALUE) {
 	    CON.buffered = buffered;
 	    get_SBI();
+	    CON.save_SBI = CON.SBI;
 	    if (!buffered) {
 		save_original_screen();
+		set_scrollback(FALSE, &CON.SBI);
 	    }
+	    GetConsoleCursorInfo(CON.hdl, &CON.save_CI);
+	    T(("... initial cursor is %svisible, %d%%",
+	       (CON.save_CI.bVisible ? "" : "not-"),
+	       (int) CON.save_CI.dwSize));
 	}
 
 	console_initialized = TRUE;
     }
+    return (CON.hdl != INVALID_HANDLE_VALUE);
 }
+
+static bool
+okConsoleHandle(TERMINAL_CONTROL_BLOCK * TCB)
+{
+    return ((TCB != 0) &&
+	    (TCB->magic == WINMAGIC) &&
+	    InitConsole());
+}
+
+/*
+ * While a constructor would ensure that this module is initialized, that will
+ * interfere with applications that may combine this with GUI interfaces.
+ */
+#if 0
+static
+__attribute__((constructor))
+     void _enter_console(void)
+{
+    (void) InitConsole();
+}
+#endif
