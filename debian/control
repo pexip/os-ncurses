@@ -14,7 +14,7 @@ Standards-Version: 3.9.5
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/ncurses.git
 Vcs-Git: git://anonscm.debian.org/collab-maint/ncurses.git
 Homepage: http://invisible-island.net/ncurses/
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
 
 Package: libtinfo5
 Architecture: any
