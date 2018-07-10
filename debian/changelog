@@ -1,3 +1,9 @@
+ncurses (6.0+20161126-1+deb9u2pexip1) pexip; urgency=medium
+
+  * Migrate to Stretch
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 10 Jul 2018 11:31:25 +0000
+
 ncurses (6.0+20161126-1+deb9u2) stretch; urgency=medium
 
   * Cherry-pick upstream fix from the 20171125 patchlevel to fix
