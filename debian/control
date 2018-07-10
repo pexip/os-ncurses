@@ -4,15 +4,15 @@ Priority: required
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Craig Small <csmall@debian.org>
 XSBC-Pexip-Original-Uploaders: Sven Joachim <svenjoac@gmx.de>
-Build-Depends: debhelper (>= 8.1.3),
-               dpkg-dev (>= 1.15.7),
-               g++-multilib [amd64 i386 powerpc ppc64 s390 sparc],
+Build-Depends: debhelper (>= 9.20141010),
+               dpkg-dev (>= 1.17.14),
+               g++-multilib [amd64 i386 powerpc ppc64 s390 sparc] <!nobiarch>,
                libgpm-dev [linux-any],
                pkg-config,
                autotools-dev,
-Standards-Version: 3.9.5
-Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/ncurses.git
-Vcs-Git: git://anonscm.debian.org/collab-maint/ncurses.git
+Standards-Version: 3.9.8
+Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/ncurses.git
+Vcs-Git: https://anonscm.debian.org/git/collab-maint/ncurses.git
 Homepage: http://invisible-island.net/ncurses/
 XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
 
@@ -29,9 +29,22 @@ Description: shared low-level terminfo library for terminal handling
  .
  This package contains the shared low-level terminfo library.
 
+Package: libtinfo5-udeb
+Package-Type: udeb
+Section: debian-installer
+Architecture: any
+Priority: extra
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: shared low-level terminfo library for terminal handling - udeb
+ The ncurses library routines are a terminal-independent method of
+ updating character screens with reasonable optimization.
+ .
+ This package contains the stripped-down udeb version of shared low-level
+ terminfo library.
+
 Package: libncurses5
 Architecture: any
-Pre-Depends: ${misc:Pre-Depends}, libtinfo5 (>= 5.9-3)
+Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same
 Depends: libtinfo5 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Recommends: libgpm2 [linux-any]
@@ -47,7 +60,8 @@ Architecture: any
 Section: libdevel
 Priority: optional
 Multi-Arch: same
-Depends: libtinfo5 (= ${binary:Version}), ${misc:Depends}
+Depends: libtinfo5 (= ${binary:Version}), ${misc:Depends},
+         ncurses-bin (>= 6.0+20151017)
 Replaces: libncurses5-dev (<< 5.9-3)
 Breaks: binutils-gold (<< 2.21.53.20110910)
 Description: developer's library for the low-level terminfo library
@@ -62,7 +76,7 @@ Package: libtinfo5-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: libtinfo5 (= ${binary:Version}), libtinfo-dev (= ${binary:Version}),
+Depends: libtinfo5 (= ${binary:Version}),
          ${shlibs:Depends}, ${misc:Depends}
 Replaces: libncurses5-dbg (<< 5.9+20130608)
 Breaks: libncurses5-dbg (<< 5.9-3)
@@ -80,10 +94,10 @@ Section: libdevel
 Priority: optional
 Multi-Arch: same
 Depends: libtinfo5 (= ${binary:Version}), libncurses5 (= ${binary:Version}),
-         libtinfo-dev (= ${binary:Version}), ncurses-bin (= ${binary:Version}),
+         libtinfo-dev (= ${binary:Version}),
          libc6-dev | libc-dev, ${misc:Depends}
 Conflicts: ncurses-dev, libncurses-dev
-Replaces: ncurses-dev, libncurses-dev
+Replaces: ncurses-dev, libncurses-dev, ncurses-bin (<< 6.0+20151017)
 Provides: libncurses-dev, ncurses-dev
 Suggests: ncurses-doc
 Description: developer's libraries for ncurses
@@ -97,7 +111,7 @@ Package: libncurses5-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: libtinfo5 (= ${binary:Version}), libncurses5-dev (= ${binary:Version}),
+Depends: libtinfo5 (= ${binary:Version}), libncurses5 (= ${binary:Version}),
          libtinfo5-dbg (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: debugging/profiling libraries for ncurses
  The ncurses library routines are a terminal-independent method of
@@ -127,8 +141,9 @@ Section: libdevel
 Priority: optional
 Multi-Arch: same
 Depends: libtinfo5 (= ${binary:Version}), libncursesw5 (= ${binary:Version}),
-         libtinfo-dev (= ${binary:Version}), ncurses-bin (= ${binary:Version}),
+         libtinfo-dev (= ${binary:Version}),
          libc6-dev | libc-dev, ${misc:Depends}
+Replaces: ncurses-bin (<< 6.0+20151017)
 Suggests: ncurses-doc
 Description: developer's libraries for ncursesw
  The ncurses library routines are a terminal-independent method of
@@ -144,7 +159,7 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: libtinfo5 (= ${binary:Version}), libtinfo5-dbg (= ${binary:Version}),
-         libncursesw5-dev (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+         libncursesw5 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: debugging/profiling libraries for ncursesw
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -161,6 +176,7 @@ Priority: optional
 Depends: lib64tinfo5 (= ${binary:Version}),
          ${shlibs:Depends}, ${misc:Depends}
 Replaces: amd64-libs (<= 1.2)
+Build-Profiles: <!nobiarch>
 Description: shared libraries for terminal handling (64-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -180,6 +196,7 @@ Depends: lib64ncurses5 (= ${binary:Version}),
          libncurses5-dev (= ${binary:Version}), lib64c-dev, ${misc:Depends}
 Suggests: ncurses-doc
 Replaces: amd64-libs-dev (<= 1.2), lib64tinfo5-dev
+Build-Profiles: <!nobiarch>
 Description: developer's libraries for ncurses (64-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -196,6 +213,7 @@ Priority: optional
 Depends: lib32tinfo5 (= ${binary:Version}),
          ${shlibs:Depends}, ${misc:Depends}
 Replaces: ia32-libs (<< 1.10)
+Build-Profiles: <!nobiarch>
 Description: shared libraries for terminal handling (32-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -214,6 +232,7 @@ Depends: lib32tinfo5 (= ${binary:Version}), lib32ncurses5 (= ${binary:Version}),
          lib32tinfo-dev (= ${binary:Version}),
          libncurses5-dev (= ${binary:Version}), lib32c-dev, ${misc:Depends}
 Suggests: ncurses-doc
+Build-Profiles: <!nobiarch>
 Description: developer's libraries for ncurses (32-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -229,6 +248,7 @@ Architecture: amd64 ppc64
 Priority: optional
 Depends: lib32tinfo5 (= ${binary:Version}),
          ${shlibs:Depends}, ${misc:Depends}
+Build-Profiles: <!nobiarch>
 Description: shared libraries for terminal handling (wide character support) (32-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -247,6 +267,7 @@ Depends: lib32tinfo5 (= ${binary:Version}), lib32ncursesw5 (= ${binary:Version})
          lib32tinfo-dev (= ${binary:Version}),
          libncursesw5-dev (= ${binary:Version}), lib32c-dev, ${misc:Depends}
 Suggests: ncurses-doc
+Build-Profiles: <!nobiarch>
 Description: developer's libraries for ncursesw (32-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -264,6 +285,7 @@ Priority: optional
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Replaces: lib64ncurses5 (<< 5.9-3)
 Breaks: lib64ncurses5 (<< 5.9-3)
+Build-Profiles: <!nobiarch>
 Description: shared low-level terminfo library for terminal handling (64-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -278,6 +300,7 @@ Priority: optional
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Replaces: lib32ncurses5 (<< 5.9-3)
 Breaks: lib32ncurses5 (<< 5.9-3)
+Build-Profiles: <!nobiarch>
 Description: shared low-level terminfo library for terminal handling (32-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -294,6 +317,7 @@ Depends: lib32tinfo5 (= ${binary:Version}),
          lib32c-dev, ${misc:Depends}
 Replaces: lib32ncurses5-dev (<< 5.9-3), lib32tinfo5-dev
 Breaks: lib32ncurses5-dev (<< 5.9-3)
+Build-Profiles: <!nobiarch>
 Description: developer's library for the low-level terminfo library (32-bit)
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -324,7 +348,6 @@ Section: misc
 Essential: yes
 Multi-Arch: foreign
 Depends: ${misc:Depends}
-Conflicts: ncurses, ncurses-runtime
 Provides: ncurses-runtime
 Breaks: ncurses-term (<< 5.7+20100313-3)
 Description: basic terminal type definitions

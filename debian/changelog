@@ -1,36 +1,18 @@
-ncurses (5.9+20140913-1+deb8u3pexip1) pexip; urgency=low
-
-  * New upstream release
-
- -- John-Mark Bell <jmb@pexip.com>  Wed, 04 Jul 2018 23:50:04 +0100
-
-ncurses (5.9+20140913-1+deb8u3) jessie; urgency=medium
+ncurses (6.0+20161126-1+deb9u2) stretch; urgency=medium
 
   * Cherry-pick upstream fix from the 20171125 patchlevel to fix
     a buffer overflow in the _nc_write_entry function
     (CVE-2017-16879, Closes: #882620).
 
- -- Sven Joachim <svenjoac@gmx.de>  Thu, 28 Dec 2017 11:14:57 +0100
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 28 Dec 2017 10:47:33 +0100
 
-ncurses (5.9+20140913-1+deb8u2pexip1) pexip; urgency=low
-
-  * New upstream release
-
- -- John-Mark Bell <jmb@pexip.com>  Tue, 02 Jan 2018 13:49:24 +0000
-
-ncurses (5.9+20140913-1+deb8u2) jessie; urgency=medium
-
-  * Re-upload with no changes to work around #826161.
-
- -- Sven Joachim <svenjoac@gmx.de>  Sun, 03 Dec 2017 11:20:45 +0100
-
-ncurses (5.9+20140913-1+deb8u1) jessie; urgency=medium
+ncurses (6.0+20161126-1+deb9u1) stretch; urgency=medium
 
   * Cherry-pick upstream fixes from the 20170701 and 20170708 patchlevels
     for various crash bugs in the tic library and the tic binary
     (CVE-2017-10684, CVE-2017-10685, CVE-2017-11112, CVE-2017-11113).
-  * Apply termcap-format fix from openSUSE's ncurses-5.9-55.6.1 package,
-    repairing a regression from the above security fixes (see #868266).
+  * Backport termcap-format fix from the 20170715 patchlevel, repairing a
+    regression from the above security fixes (see #868266).
   * Cherry-pick upstream fixes from the 20170826 patchlevel for more
     crash bugs in the tic library (CVE-2017-13728, CVE-2017-13729,
     CVE-2017-13730, CVE-2017-13731, CVE-2017-13732, CVE-2017-13734,
@@ -38,7 +20,201 @@ ncurses (5.9+20140913-1+deb8u1) jessie; urgency=medium
   * Cherry-pick upstream fixes from the 20170902 patchlevel to fix
     another crash bug in the tic program (CVE-2017-13733, Closes: #873746).
 
- -- Sven Joachim <svenjoac@gmx.de>  Thu, 07 Sep 2017 19:08:05 +0200
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 07 Sep 2017 19:05:43 +0200
+
+ncurses (6.0+20161126-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Omit selection of ISO-8859-1 for G0 in enacs capability from
+      linux2.6 entry, to avoid conflict with the user-defined mapping
+      (Closes: #830694).
+  * Update symbols files for new symbol unfocus_current_field.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 29 Nov 2016 21:19:08 +0100
+
+ncurses (6.0+20160917-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Fix typo in 20160910 changes (Closes: #837892, patch by Sven Joachim).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 21 Sep 2016 18:37:15 +0200
+
+ncurses (6.0+20160910-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Trim trailing blanks from include/Caps*, to work around a problem
+      in sed (Closes: #818067).
+  * Invoke configure via relative paths to prevent the build path from
+    showing up in binaries.
+  * Enable parallel builds.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 14 Sep 2016 20:09:34 +0200
+
+ncurses (6.0+20160625-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Make linux3.0 entry the default linux entry (Closes: #823658, #515609).
+    - Improve manual pages for wgetch and wget_wch to point out that they
+      might return values without names in curses.h (Closes: #822426).
+    - Amend change to _nc_do_color to restore the early return for the
+      special case used in _nc_screen_wrap (report by Dick Streefland,
+      Closes: #816887).
+  * Update xterm.ti from xterm 325.
+  * Enable the bindnow hardening flag.
+  * Really install the Debian FAQ into the libtinfo5 package.
+  * Update links in the Debian FAQ.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 06 Jul 2016 18:00:26 +0200
+
+ncurses (6.0+20160319-2) unstable; urgency=low
+
+  * Team upload
+
+  [ Roger Shimizu ]
+  * Add udeb support to libtinfo5 (Closes: #819397).
+
+  [ Sven Joachim ]
+  * Do not include the tic library in the libtinfo5-udeb package.
+
+  [ Axel Beckert ]
+  * Declare compliance with Debian Policy 3.9.8. (No changes needed.)
+  * Uploading the package for Sven. Upload sponsoring is needed since
+    there is a new binary (udeb) package included.
+
+ -- Axel Beckert <abe@debian.org>  Sun, 19 Jun 2016 23:26:15 +0200
+
+ncurses (6.0+20160319-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Amend workaround for Solaris line-drawing to restore a special case
+      that maps Unicode line-drawing characters into the acsc string for
+      non-Unicode locales (Closes: #816888).
+  * Upgrade Standards-Version to 3.9.7, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 25 Mar 2016 09:48:16 +0100
+
+ncurses (6.0+20160213-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+  * Only include debug symbols for the libraries in the -dbg packages,
+    use automatic -dbgsym packages for ncurses-{bin,examples} and the
+    multilib packages.
+  * Bump debhelper compatibility level to 9.
+  * Update years in debian/copyright.
+  * Use https in Vcs-Git URL.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 18 Feb 2016 18:29:28 +0100
+
+ncurses (6.0+20151024-2) unstable; urgency=medium
+
+  * Drop the static debug libraries (Closes: #803482).
+  * Remove the dependency of the -dbg packages on their -dev counterparts,
+    let them depend on the libraries instead.
+  * Add a dependency on ncurses-bin (>= 6.0+20151017) to libtinfo-dev,
+    making piuparts happy (Closes: #803563).
+  * Add an empty /usr/share/terminfo to ncurses-base to work around
+    FTBFS in jed and slrn (see #804083, #804084).
+  * Update Vcs-Browser field to use cgit and https.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 05 Nov 2015 20:53:12 +0100
+
+ncurses (6.0+20151024-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Improve configure check for setting WILDCARD_SYMS variable; on ppc64
+      the variable is in the Data section rather than Text (patch by Michel
+      Normand, Closes: #802810).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 25 Oct 2015 15:25:20 +0100
+
+ncurses (6.0+20151017-1) unstable; urgency=low
+
+  [ Sven Joachim ]
+  * New upstream patchlevel.
+    - Improve check for working poll() by using posix_openpt() as a
+      fallback in case there is no valid terminal on the standard input
+      (Closes: #676461).
+    - Modify ncurses/Makefile.in to sort keys.list in POSIX locale
+      (Closes: #801864).
+  * Update symbols files for new symbol _nc_write_object.
+  * Bump build dependencies on debhelper (>= 9.20141010) and
+    dpkg-dev (>= 1.17.14) for build profiles support.
+  * Update rxvt-unicode terminfo description from upstream CVS Rev 1.35
+    (Closes: #801709).
+  * Move the ncurses{w,}5-config scripts to their respective -dev
+    packages again (Closes: #745479).
+
+  [ Johannes Schauer ]
+  * Support the nobiarch build profile for avoiding multilib. (Closes: #737946)
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 23 Oct 2015 17:01:49 +0200
+
+ncurses (6.0+20150810-1) unstable; urgency=medium
+
+  * New upstream release.
+    - Fix comparison against "/usr/include" in misc/gen-pkgconfig.in
+      (Closes: #790548).
+  * Configure with "--with-abi-version=5", upstream defaults to abi 6 now.
+  * Configure with "--with-versioned-syms" (Closes: #788610).
+    - Bump minimal versions of all symbols as well as shlibs to 6.
+  * After building the wide library, install it into a temporary
+    scratchdir so that test/configure can find the necessary auxiliary
+    files (see #786436).
+  * Drop the libncursesw5-dev build-dependency.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 17 Aug 2015 18:01:53 +0200
+
+ncurses (5.9+20150516-2) unstable; urgency=low
+
+  * Move the ncurses{w,}5-config scripts back to ncurses-bin
+    (Closes: #786436, reopens: #745479).
+    - Readd the dependency of the -dev packages on ncurses-bin.
+    - Temporarily add a build-dependency on libncursesw5-dev to
+      avoid the FTBFS problem in #786436.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 21 May 2015 23:20:46 +0200
+
+ncurses (5.9+20150516-1) unstable; urgency=low
+
+  [ Sven Joachim ]
+  * New upstream patchlevel.
+    - Fix FTBFS with GCC 5 (Closes: #777461).
+    - Add xon, ich1, il1 to ibm3161 (patch by Stephen Powell,
+      Closes: #783806).
+  * Refresh patch 02-debian-backspace.diff after upstream changes to
+    the screen terminfo description.
+  * Move the ncurses{w,}5-config scripts to their respective -dev
+    packages (Closes: #745479).
+    - Enhance patch 03-debian-ncursesconfig-omit-L.diff to suppress
+      output in the --libdir option, so that the scripts are identical
+      across architectures.
+    - Drop the dependency of the -dev packages on ncurses-bin.  
+  * Remove support for upgrades from versions prior to 5.9-10.
+    - Drop the maintainer scripts.
+    - Drop Pre-Dependency of libncurses5 on libtinfo5.
+  * Drop Conflicts of ncurses-base with ncurses and ncurses-runtime.
+  * Configure with "--with-manpage-format=normal" to avoid having to
+    set GZIP in debian/rules.
+  * Use the armored signature for the watch files.
+  * Update years in debian/copyright.
+  * Upgrade Standards-Version to 3.9.6, no changes needed.
+
+  [ Helmut Grohne ]
+  * Use correct compiler for multilib cross builds. (Closes: #774404)
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 20 May 2015 18:01:10 +0200
+
+ncurses (5.9+20140913-1+deb8u3pexip1) pexip; urgency=low
+
+  * New upstream release
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 04 Jul 2018 23:50:04 +0100
+
+ncurses (5.9+20140913-1+deb8u2pexip1) pexip; urgency=low
+
+  * New upstream release
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 02 Jan 2018 13:49:24 +0000
 
 ncurses (5.9+20140913-1+b1pexip1) pexip; urgency=low
 

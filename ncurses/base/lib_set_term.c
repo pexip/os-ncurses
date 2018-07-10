@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -47,7 +47,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_set_term.c,v 1.149 2014/03/08 20:32:59 tom Exp $")
+MODULE_ID("$Id: lib_set_term.c,v 1.155 2016/05/28 21:33:38 tom Exp $")
 
 #ifdef USE_TERM_DRIVER
 #define MaxColors      InfoOf(sp).maxcolors
@@ -134,7 +134,6 @@ delink_screen(SCREEN *sp)
 NCURSES_EXPORT(void)
 delscreen(SCREEN *sp)
 {
-    int i;
 
     T((T_CALLED("delscreen(%p)"), (void *) sp));
 
@@ -159,7 +158,10 @@ delscreen(SCREEN *sp)
 	(void) _nc_freewin(StdScreen(sp));
 
 	if (sp->_slk != 0) {
+
 	    if (sp->_slk->ent != 0) {
+		int i;
+
 		for (i = 0; i < sp->_slk->labcnt; ++i) {
 		    FreeIfNeeded(sp->_slk->ent[i].ent_text);
 		    FreeIfNeeded(sp->_slk->ent[i].form_text);
@@ -190,6 +192,7 @@ delscreen(SCREEN *sp)
 
 	NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
 	NCURSES_SP_NAME(del_curterm) (NCURSES_SP_ARGx sp->_term);
+	FreeIfNeeded(sp->out_buffer);
 	free(sp);
 
 	/*
@@ -206,6 +209,12 @@ delscreen(SCREEN *sp)
 	    COLOR_PAIRS = 0;
 #endif
 	    _nc_set_screen(0);
+#if USE_WIDEC_SUPPORT
+	    if (SP == 0) {
+		FreeIfNeeded(_nc_wacs);
+		_nc_wacs = 0;
+	    }
+#endif
 	}
     }
     _nc_unlock_global(curses);
@@ -242,13 +251,14 @@ no_mouse_wrap(SCREEN *sp GCC_UNUSED)
 }
 
 #if NCURSES_EXT_FUNCS && USE_COLORFGBG
-static char *
-extract_fgbg(char *src, int *result)
+static const char *
+extract_fgbg(const char *src, int *result)
 {
-    char *dst = 0;
-    long value = strtol(src, &dst, 0);
+    const char *dst = 0;
+    char *tmp = 0;
+    long value = strtol(src, &tmp, 0);
 
-    if (dst == 0) {
+    if ((dst = tmp) == 0) {
 	dst = src;
     } else if (value >= 0) {
 	*result = value;
@@ -261,7 +271,7 @@ extract_fgbg(char *src, int *result)
 }
 #endif
 
-#define ReturnScreenError() { _nc_set_screen(0); \
+#define ReturnScreenError() do { _nc_set_screen(0); \
                             returnCode(ERR); } while (0)
 
 /* OS-independent screen initializations */
@@ -278,7 +288,6 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 {
     char *env;
     int bottom_stolen = 0;
-    ripoff_t *rop;
     SCREEN *sp;
 #ifndef USE_TERM_DRIVER
     bool support_cookies = USE_XMC_SUPPORT;
@@ -442,7 +451,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
      * decide later if it is worth having default attributes as well.
      */
     if (getenv("COLORFGBG") != 0) {
-	char *p = getenv("COLORFGBG");
+	const char *p = getenv("COLORFGBG");
 	TR(TRACE_CHARPUT | TRACE_MOVE, ("decoding COLORFGBG %s", p));
 	p = extract_fgbg(p, &(sp->_default_fg));
 	p = extract_fgbg(p, &(sp->_default_bg));
@@ -453,7 +462,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 	if (sp->_default_fg >= MaxColors) {
 	    if (set_a_foreground != ABSENT_STRING
 		&& !strcmp(set_a_foreground, "\033[3%p1%dm")) {
-		set_a_foreground = "\033[3%?%p1%{8}%>%t9%e%p1%d%;m";
+		set_a_foreground = strdup("\033[3%?%p1%{8}%>%t9%e%p1%d%;m");
 	    } else {
 		sp->_default_fg %= MaxColors;
 	    }
@@ -461,7 +470,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 	if (sp->_default_bg >= MaxColors) {
 	    if (set_a_background != ABSENT_STRING
 		&& !strcmp(set_a_background, "\033[4%p1%dm")) {
-		set_a_background = "\033[4%?%p1%{8}%>%t9%e%p1%d%;m";
+		set_a_background = strdup("\033[4%?%p1%{8}%>%t9%e%p1%d%;m");
 	    } else {
 		sp->_default_bg %= MaxColors;
 	    }
@@ -573,7 +582,9 @@ NCURSES_SP_NAME(_nc_setupscreen) (
     NCURSES_SP_NAME(_nc_init_acs) (NCURSES_SP_ARG);
 #if USE_WIDEC_SUPPORT
     sp->_screen_unicode = _nc_unicode_locale();
-    _nc_init_wacs();
+    if (_nc_wacs == 0) {
+	_nc_init_wacs();
+    }
     if (_nc_wacs == 0) {
 	ReturnScreenError();
     }
@@ -621,6 +632,8 @@ NCURSES_SP_NAME(_nc_setupscreen) (
     NCURSES_SP_NAME(def_prog_mode) (NCURSES_SP_ARG);
 
     if (safe_ripoff_sp && safe_ripoff_sp != safe_ripoff_stack) {
+	ripoff_t *rop;
+
 	for (rop = safe_ripoff_stack;
 	     rop != safe_ripoff_sp && (rop - safe_ripoff_stack) < N_RIPS;
 	     rop++) {
@@ -716,7 +729,7 @@ NCURSES_SP_NAME(_nc_ripoffline) (NCURSES_SP_DCLx
     int code = ERR;
 
     START_TRACE();
-    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, init));
+    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, TR_FUNC(init)));
 
 #if NCURSES_SP_FUNCS
     if (SP_PARM != 0 && SP_PARM->_prescreen)

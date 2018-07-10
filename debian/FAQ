@@ -25,8 +25,8 @@ Home/End keys don't work in some non-full-screen applications.
 
 The situation with this is somewhat complicated. For a background summary, see:
 
-	http://dickey.his.com/xterm/xterm.faq.html#xterm_pc_style
-	http://dickey.his.com/xterm/xterm.faq.html#xterm_arrows
+	http://invisible-island.net/xterm/xterm.faq.html#xterm_pc_style
+	http://invisible-island.net/xterm/xterm.faq.html#xterm_arrows
 
 Essentially, the key sequences in terminfo entries (particularly khome and kend)
 are for full-screen applications only. This means that they are only valid after

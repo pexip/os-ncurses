@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2012 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -30,7 +30,7 @@
  *   Author:  Juergen Pfeifer, 1995,1997                                    *
  ****************************************************************************/
 
-/* $Id: menu.priv.h,v 1.24 2012/03/10 23:43:41 tom Exp $ */
+/* $Id: menu.priv.h,v 1.26 2016/03/26 21:50:56 tom Exp $ */
 
 /***************************************************************************
 * Module menu.priv.h                                                       *
@@ -78,7 +78,8 @@ extern NCURSES_EXPORT_VAR(MENU) _nc_Default_Menu;
 		       O_ROWMAJOR     | \
 		       O_IGNORECASE   | \
 		       O_SHOWMATCH    | \
-		       O_NONCYCLIC    )
+		       O_NONCYCLIC    | \
+		       O_MOUSE_MENU   )
 
 #define ALL_ITEM_OPTS (O_SELECTABLE)
 
@@ -130,12 +131,12 @@ extern NCURSES_EXPORT(int)  _nc_menu_cursor_pos (const MENU* menu, const ITEM* i
 
 #ifdef TRACE
 
-#define returnItem(code)	TRACE_RETURN(code,item)
-#define returnItemPtr(code)	TRACE_RETURN(code,item_ptr)
-#define returnItemOpts(code)	TRACE_RETURN(code,item_opts)
-#define returnMenu(code)	TRACE_RETURN(code,menu)
-#define returnMenuHook(code)	TRACE_RETURN(code,menu_hook)
-#define returnMenuOpts(code)	TRACE_RETURN(code,menu_opts)
+#define returnItem(code)	TRACE_RETURN1(code,item)
+#define returnItemPtr(code)	TRACE_RETURN1(code,item_ptr)
+#define returnItemOpts(code)	TRACE_RETURN1(code,item_opts)
+#define returnMenu(code)	TRACE_RETURN1(code,menu)
+#define returnMenuHook(code)	TRACE_RETURN1(code,menu_hook)
+#define returnMenuOpts(code)	TRACE_RETURN1(code,menu_opts)
 
 extern NCURSES_EXPORT(ITEM *)	    _nc_retrace_item (ITEM *);
 extern NCURSES_EXPORT(ITEM **)	    _nc_retrace_item_ptr (ITEM **);

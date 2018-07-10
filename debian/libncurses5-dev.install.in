@@ -14,3 +14,5 @@ usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig/ncurses++.pc
 usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig/ncurses.pc
 usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig/panel.pc
 usr/lib/${DEB_HOST_MULTIARCH}/libcurses.a
+usr/bin/ncurses5-config
+usr/share/man/man1/ncurses5-config.1

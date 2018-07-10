@@ -2,8 +2,8 @@
 
 Summary: shared libraries for terminal handling
 Name: mingw32-ncurses6
-Version: 5.9
-Release: 20140913
+Version: 6.0
+Release: 20161126
 License: X11
 Group: Development/Libraries
 Source: ncurses-%{version}-%{release}.tgz
@@ -53,6 +53,7 @@ This package is used for testing ABI 6 with cross-compiles to MinGW.
 	--enable-const \\\
 	--enable-ext-colors \\\
 	--enable-ext-mouse \\\
+	--enable-ext-putwin \\\
 	--enable-interop \\\
 	--enable-sp-funcs \\\
 	--enable-term-driver \\\
@@ -96,31 +97,47 @@ popd
 %install
 rm -rf $RPM_BUILD_ROOT
 
+mkdir -p $RPM_BUILD_ROOT%{_bindir}
+
 pushd BUILD-W32
-%{mingw32_make} install
+%{mingw32_make} install.libs
+for name in $RPM_BUILD_ROOT%{mingw32_bindir}/*-config; \
+	do \
+		base=`basename $name`; \
+		ln -v $name $RPM_BUILD_ROOT%{_bindir}/%{mingw32_target}-$base; \
+	done
 popd
 
 pushd BUILD-W64
-%{mingw64_make} install
+%{mingw64_make} install.libs
+for name in $RPM_BUILD_ROOT%{mingw64_bindir}/*-config; \
+	do \
+		base=`basename $name`; \
+		ln -v $name $RPM_BUILD_ROOT%{_bindir}/%{mingw64_target}-$base; \
+	done
 popd
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%files
-%defattr(-,root,root,-)
-
 %files -n mingw32-ncurses6
+%defattr(-,root,root,-)
+%{_bindir}/%{mingw32_target}-*
 %{mingw32_bindir}/*
 %{mingw32_includedir}/*
 %{mingw32_libdir}/*
 
 %files -n mingw64-ncurses6
+%defattr(-,root,root,-)
+%{_bindir}/%{mingw64_target}-*
 %{mingw64_bindir}/*
 %{mingw64_includedir}/*
 %{mingw64_libdir}/*
 
 %changelog
+
+* Sat Sep 20 2014 Thomas E. Dickey
+- adjust install-rules for ncurses*-config
 
 * Sat Aug 03 2013 Thomas E. Dickey
 - initial version, using mingw-pdcurses package as a guide.

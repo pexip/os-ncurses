@@ -2,14 +2,27 @@
 # This file has gone through many maintainers.  Mostly rewritten
 # by Daniel Jacobowitz.
 
-CFLAGS := $(shell dpkg-buildflags --get CFLAGS)
-export CPPFLAGS := $(shell dpkg-buildflags --get CPPFLAGS)
-export CXXFLAGS := $(shell dpkg-buildflags --get CXXFLAGS)
-export LDFLAGS := $(shell dpkg-buildflags --get LDFLAGS)
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+    NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+    MAKEFLAGS += -j$(NUMJOBS) -Otarget
+endif
+
+CFLAGS := $(shell DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow dpkg-buildflags --get CFLAGS)
+export CPPFLAGS := $(shell DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow dpkg-buildflags --get CPPFLAGS)
+export CXXFLAGS := $(shell DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow dpkg-buildflags --get CXXFLAGS)
+export LDFLAGS := $(shell DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow dpkg-buildflags --get LDFLAGS)
+
+ifneq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
+HOST_CC ?= $(DEB_HOST_GNU_TYPE)-gcc
+HOST_CXX ?= $(DEB_HOST_GNU_TYPE)-g++
+else
+HOST_CC ?= gcc
+HOST_CXX ?= g++
+endif
 
 # These are important since this is a library package
 soname=5
-sodepver = (>= 5.9+20140712)
+sodepver = (>= 6)
 
 # Name our packages
 package-base=ncurses-base
@@ -40,6 +53,7 @@ tempdir=debian/tmp
 fulltempdir=$(workdir)/$(tempdir)
 
 srcdir=$(shell pwd)
+relsrcdir=..
 objdir=$(srcdir)/obj
 objdir-static=$(srcdir)/obj-static
 objdir-32=$(srcdir)/obj-32
@@ -98,6 +112,11 @@ lib32 = /lib32
 usr_lib32 = /usr/lib32
 endif
 
+ifneq (,$(filter nobiarch,$(DEB_BUILD_PROFILES)))
+override build_32=
+override build_64=
+endif
+
 ifeq ($(DEB_HOST_ARCH_OS),linux)
 with_mouse = --with-gpm
 else
@@ -108,8 +127,10 @@ endif
 
 CONFARGS =	--prefix=/usr \
 		--build=$(DEB_BUILD_GNU_TYPE) \
+		--with-abi-version=5 \
 		--with-shared \
 		--mandir=/usr/share/man \
+		--with-manpage-format=normal \
 		--without-profile --without-debug \
 		--disable-rpath --enable-echo \
 		--enable-const \
@@ -128,6 +149,7 @@ CONFARGS =	--prefix=/usr \
 		--with-terminfo-dirs="/etc/terminfo:/lib/terminfo:/usr/share/terminfo" \
 		--with-ticlib=tic \
 		--with-termlib=tinfo \
+		--with-versioned-syms \
 		--with-xterm-kbs=del
 
 CONFARGS-TEST =	--prefix=/usr \
@@ -171,7 +193,7 @@ config.guess-stamp:
 
 $(objdir)/config.status: config.guess-stamp
 	test -d $(objdir) || mkdir $(objdir)
-	cd $(objdir) && CFLAGS="$(CFLAGS)" $(srcdir)/configure \
+	cd $(objdir) && CFLAGS="$(CFLAGS)" $(relsrcdir)/configure \
 		$(CONFARGS) \
 		--with-progs \
 		--with-install-prefix=$(fulltempdir) \
@@ -179,7 +201,7 @@ $(objdir)/config.status: config.guess-stamp
 
 $(objdir-static)/config.status: config.guess-stamp
 	test -d $(objdir-static) || mkdir $(objdir-static)
-	cd $(objdir-static) && CFLAGS="$(CFLAGS)" $(srcdir)/configure \
+	cd $(objdir-static) && CFLAGS="$(CFLAGS)" $(relsrcdir)/configure \
 		$(CONFARGS) \
 		--without-shared \
 		--without-dlsym \
@@ -191,9 +213,9 @@ $(objdir-32)/config.status: config.guess-stamp
 
 	cf_cv_type_of_bool='unsigned char'; export cf_cv_type_of_bool; \
 	cf_cv_working_poll=yes; export cf_cv_working_poll; \
-	cd $(objdir-32) && CFLAGS="$(CFLAGS)" CC="gcc -m32" \
-		BUILD_CC="gcc" CXX="g++ -m32" \
-		$(srcdir)/configure \
+	cd $(objdir-32) && CFLAGS="$(CFLAGS)" CC="$(HOST_CC) -m32" \
+		BUILD_CC="gcc" CXX="$(HOST_CXX) -m32" \
+		$(relsrcdir)/configure \
 		$(CONFARGS) \
 		--host=$(build_32_target) \
 		--without-gpm \
@@ -205,9 +227,9 @@ $(objdir-64)/config.status: config.guess-stamp
 
 	cf_cv_type_of_bool='unsigned char'; export cf_cv_type_of_bool; \
 	cf_cv_working_poll=yes; export cf_cv_working_poll; \
-	cd $(objdir-64) && CFLAGS="$(CFLAGS)" CC="gcc -m64" \
-		BUILD_CC="gcc" CXX="g++ -m64" \
-		$(srcdir)/configure \
+	cd $(objdir-64) && CFLAGS="$(CFLAGS)" CC="$(HOST_CC) -m64" \
+		BUILD_CC="gcc" CXX="$(HOST_CXX) -m64" \
+		$(relsrcdir)/configure \
 		$(CONFARGS) \
 		--host=$(build_64_target) \
 		--without-gpm \
@@ -217,14 +239,15 @@ $(objdir-64)/config.status: config.guess-stamp
 $(objdir-debug)/config.status: config.guess-stamp
 	test -d $(objdir-debug) || mkdir $(objdir-debug)
 	cd $(objdir-debug) && \
-		CFLAGS="$(CFLAGS) -DTRACE" $(srcdir)/configure \
+		CFLAGS="$(CFLAGS) -DTRACE" $(relsrcdir)/configure \
 		$(CONFARGS) \
+		--without-normal \
 		--with-install-prefix=$(fulltempdir) \
 		--enable-overwrite --libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
 
 $(wobjdir)/config.status: config.guess-stamp
 	test -d $(wobjdir) || mkdir $(wobjdir)
-	cd $(wobjdir) && CFLAGS="$(CFLAGS)" $(srcdir)/configure \
+	cd $(wobjdir) && CFLAGS="$(CFLAGS)" $(relsrcdir)/configure \
 		$(CONFARGS) \
 		--with-install-prefix=$(fulltempdir) \
 		--disable-overwrite --enable-widec \
@@ -232,7 +255,7 @@ $(wobjdir)/config.status: config.guess-stamp
 
 $(wobjdir-static)/config.status: config.guess-stamp
 	test -d $(wobjdir-static) || mkdir $(wobjdir-static)
-	cd $(wobjdir-static) && CFLAGS="$(CFLAGS)" $(srcdir)/configure \
+	cd $(wobjdir-static) && CFLAGS="$(CFLAGS)" $(relsrcdir)/configure \
 		$(CONFARGS) \
 		--without-shared \
 		--without-dlsym \
@@ -243,8 +266,9 @@ $(wobjdir-static)/config.status: config.guess-stamp
 $(wobjdir-debug)/config.status: config.guess-stamp
 	test -d $(wobjdir-debug) || mkdir $(wobjdir-debug)
 	cd $(wobjdir-debug) && \
-		CFLAGS="$(CFLAGS) -DTRACE" $(srcdir)/configure \
+		CFLAGS="$(CFLAGS) -DTRACE" $(relsrcdir)/configure \
 		$(CONFARGS) \
+		--without-normal \
 		--with-install-prefix=$(fulltempdir) \
 		--disable-overwrite --enable-widec \
 		--libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
@@ -254,9 +278,9 @@ $(wobjdir-32)/config.status: config.guess-stamp
 
 	cf_cv_type_of_bool='unsigned char'; export cf_cv_type_of_bool; \
 	cf_cv_working_poll=yes; export cf_cv_working_poll; \
-	cd $(wobjdir-32) && CFLAGS="$(CFLAGS)" CC="gcc -m32" \
-		BUILD_CC="gcc" BUILD_CPPFLAGS="-D_GNU_SOURCE" CXX="g++ -m32" \
-		$(srcdir)/configure \
+	cd $(wobjdir-32) && CFLAGS="$(CFLAGS)" CC="$(HOST_CC) -m32" \
+		BUILD_CC="gcc" BUILD_CPPFLAGS="-D_GNU_SOURCE" CXX="$(HOST_CXX) -m32" \
+		$(relsrcdir)/configure \
 		$(CONFARGS) \
 		--host=$(build_32_target) \
 		--without-gpm \
@@ -266,8 +290,9 @@ $(wobjdir-32)/config.status: config.guess-stamp
 
 $(objdir-test)/config.status: build-wide config.guess-stamp
 	test -d $(objdir-test) || mkdir $(objdir-test)
-	cd $(objdir-test) && CFLAGS="$(CFLAGS)" $(srcdir)/test/configure \
-		$(CONFARGS-TEST)
+	cd $(objdir-test) && CFLAGS="$(CFLAGS)" \
+		PKG_CONFIG_LIBDIR=$(wobjdir)/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig \
+		$(relsrcdir)/test/configure $(CONFARGS-TEST)
 
 build-arch build-indep: build
 
@@ -285,11 +310,11 @@ build-static: $(objdir-static)/config.status
 	touch $@
 
 build-32: $(objdir-32)/config.status
-	cd $(objdir-32) && $(MAKE)
+	cd $(objdir-32) && $(MAKE) CC="$(HOST_CC) -m32" CXX="$(HOST_CXX) -m32"
 	touch $@
 
 build-64: $(objdir-64)/config.status
-	cd $(objdir-64) && $(MAKE)
+	cd $(objdir-64) && $(MAKE) CC="$(HOST_CC) -m64" CXX="$(HOST_CXX) -m64"
 	touch $@
 
 build-debug: $(objdir-debug)/config.status
@@ -299,8 +324,7 @@ build-debug: $(objdir-debug)/config.status
 build-wide: $(wobjdir)/config.status
 	cd $(wobjdir) && $(MAKE)
 	# needed for building the examples
-	mv $(wobjdir)/lib/libncursesw.so $(wobjdir)/lib/libncursesw.so.saved
-	echo "INPUT(libncursesw.so.5 -ltinfo)" > $(wobjdir)/lib/libncursesw.so
+	$(MAKE) -C $(wobjdir) DESTDIR=$(wobjdir) install.libs
 	touch $@
 
 build-wide-static: $(wobjdir-static)/config.status
@@ -308,7 +332,7 @@ build-wide-static: $(wobjdir-static)/config.status
 	touch $@
 
 build-wide-32: $(wobjdir-32)/config.status
-	cd $(wobjdir-32) && $(MAKE)
+	cd $(wobjdir-32) && $(MAKE) CC="$(HOST_CC) -m32" CXX="$(HOST_CXX) -m32"
 	touch $@
 
 build-wide-debug: $(wobjdir-debug)/config.status
@@ -344,19 +368,9 @@ install: build
 	dh_testroot
 	dh_prep
 
-	# Static debug libraries need _g suffix to avoid file clashes
-	set -e; \
-	for lib in $(objdir-debug)/lib/*.a; do \
-	  cp -p $$lib `echo $$lib | sed 's/\.a$$/_g.a/'`; \
-	done
-	set -e;	\
-	for lib in $(wobjdir-debug)/lib/*.a; do \
-	  cp -p $$lib `echo $$lib | sed 's/\.a$$/_g.a/'`; \
-	done
-
 	# Install non -DTRACE versions.
-	GZIP='-9n' $(MAKE) -C $(objdir) install
 	$(MAKE) -C $(wobjdir) install.libs
+	$(MAKE) -C $(objdir) install
 
 	install -m 644 -t $(fulltempdir)/usr/lib/$(DEB_HOST_MULTIARCH) $(objdir-static)/lib/*.a
 	install -m 644 -t $(fulltempdir)/usr/lib/$(DEB_HOST_MULTIARCH) $(wobjdir-static)/lib/*.a
@@ -430,10 +444,11 @@ binary:	binary-arch binary-indep
 binary-arch: build install $(autogen-files)
 	dh_testdir
 	dh_testroot
-	dh_install -s --fail-missing
-	dh_installman -s
-	dh_installdocs -p$(package-bin) -p$(package-ti) -p$(package-examples) debian/FAQ
-	dh_installdocs -s -N$(package-bin) -N$(package-ti) -N$(package-examples) \
+	dh_install -p$(package-bin) -Xncurses5-config -Xncursesw5-config
+	dh_install -a -N$(package-bin) --fail-missing
+	dh_installman -a
+	dh_installdocs -p$(package-ti) -p$(package-bin) -p$(package-examples) debian/FAQ
+	dh_installdocs -a -N$(package-bin) -N$(package-ti) -N$(package-examples) \
 		       -N$(package-lib-32) -N$(package-libw-32) -N$(package-dev-32) \
 		       -N$(package-devw-32) -N$(package-devti-32) -N$(package-ti-32) \
 		       -N$(package-lib-64) -N$(package-dev-64) -N$(package-ti-64) \
@@ -449,19 +464,20 @@ ifneq ($(build_64),)
 	dh_installdocs -p$(package-lib-64) -p$(package-dev-64) \
 		       --link-doc=$(package-ti-64)
 endif
-	dh_installchangelogs -s NEWS
-	dh_installdirs -s
+	dh_installchangelogs -a NEWS
+	dh_installdirs -a
 
 	# Strip the packages, shipping detached debugging symbols.
-	dh_strip -s -N$(package-libw) -N$(package-ti) --dbg-package=$(package-dbg)
+	dh_strip -a -N$(package-lib) -N$(package-libw) -N$(package-ti)
+	dh_strip -p$(package-lib) --dbg-package=$(package-dbg)
 	dh_strip -p$(package-libw) --dbg-package=$(package-dbgw)
 	dh_strip -p$(package-ti) --dbg-package=$(package-dbgti)
-	dh_lintian -s
+	dh_lintian -a
 	dh_compress -p$(package-examples) usr/lib/ncurses/examples/README
-	dh_compress -s -N$(package-examples)
-	dh_fixperms -s
-	dh_link -s
-	dh_makeshlibs -p$(package-ti) -V "$(package-ti) $(sodepver)" -- -c4
+	dh_compress -a -N$(package-examples)
+	dh_fixperms -a
+	dh_link -a
+	dh_makeshlibs -p$(package-ti) -V "$(package-ti) $(sodepver)" --add-udeb=$(package-ti)-udeb -- -c4
 	dh_makeshlibs -p$(package-lib) -V "$(package-lib) $(sodepver)" -- -c4
 	dh_makeshlibs -p$(package-libw) -V "$(package-libw) $(sodepver)" -- -c4
 ifneq ($(build_32),)
@@ -473,19 +489,26 @@ ifneq ($(build_64),)
 	dh_makeshlibs -p$(package-ti-64) -V "$(package-ti-64) $(sodepver)" -- -c4
 	dh_makeshlibs -p$(package-lib-64) -V "$(package-lib-64) $(sodepver)" -- -c4
 endif
-	dh_shlibdeps -s
-	dh_gencontrol -s
-	dh_installdeb -s
-	dh_md5sums -s
-	dh_builddeb -s
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_installdeb -a
+	# We don't install the tic library in the libtinfo5 udeb, adjust the shlibs file
+	sed -i '/^udeb: libtic /d' debian/$(package-ti)/DEBIAN/shlibs
+	dh_md5sums -a
+	dh_builddeb -a
 
 binary-indep: build install $(autogen-files)
 	dh_testdir
 	dh_testroot
 
 	dh_installdocs -i -Xhtml/Ada95.html -Xhtml/ada/
+	mv debian/ncurses-doc/usr/share/doc/ncurses-doc/html/man/ncurses6-config.1.html \
+	   debian/ncurses-doc/usr/share/doc/ncurses-doc/html/man/ncurses5-config.1.html
+	sed -i 's/ncurses6-config/ncurses5-config/g' \
+	       debian/ncurses-doc/usr/share/doc/ncurses-doc/html/man/ncurses5-config.1.html
 	dh_installchangelogs -i NEWS
 	dh_install -i --fail-missing
+	dh_installdirs -i
 	dh_lintian -i
 	dh_compress -i
 	dh_fixperms -i
