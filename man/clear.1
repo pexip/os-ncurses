@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2013,2016 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,41 +26,69 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: clear.1,v 1.14 2016/11/19 21:30:46 tom Exp $
+.\" $Id: clear.1,v 1.22 2018/07/28 21:45:40 tom Exp $
 .TH @CLEAR@ 1 ""
 .\" these would be fallbacks for DS/DE,
 .\" but groff changed the meaning of the macros.
 .de NS
-.sp .5
-.in +4
+.ie n  .sp
+.el    .sp .5
+.ie n  .in +4
+.el    .in +2
 .nf
 .ft C			\" Courier
 ..
 .de NE
 .fi
 .ft R
-.in -4
+.ie n  .in -4
+.el    .in -2
 ..
 .ie \n(.g .ds `` \(lq
 .el       .ds `` ``
 .ie \n(.g .ds '' \(rq
 .el       .ds '' ''
 .de bP
-.IP \(bu 4
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
 ..
 .ds n 5
 .SH NAME
 \fB@CLEAR@\fR \- clear the terminal screen
 .SH SYNOPSIS
-\fB@CLEAR@\fR
+\fB@CLEAR@\fR [\fB\-T\fR\fItype\fR] [\fB\-V\fP] [\fB\-x\fP]
 .br
 .SH DESCRIPTION
 \fB@CLEAR@\fR clears your screen if this is possible,
-including its scrollback buffer (if the extended \*(``E3\*('' capability is defined).
-\fB@CLEAR@\fR looks in the environment for the terminal type and then in the
+including its scrollback buffer
+(if the extended \*(``E3\*('' capability is defined).
+\fB@CLEAR@\fR looks in the environment for the terminal type
+given by the environment variable \fBTERM\fP,
+and then in the
 \fBterminfo\fR database to determine how to clear the screen.
 .PP
-\fB@CLEAR@\fR ignores any command-line parameters that may be present.
+\fB@CLEAR@\fR writes to the standard output.
+You can redirect the standard output to a file (which prevents
+\fB@CLEAR@\fR from actually clearing the screen),
+and later \fBcat\fP the file to the screen, clearing it at that point.
+.SH OPTIONS
+.PP
+.TP 5
+.B \-T \fItype\fP
+indicates the \fItype\fR of terminal.
+Normally this option is
+unnecessary, because the default is taken from the environment
+variable \fBTERM\fR.
+If \fB\-T\fR is specified, then the shell
+variables \fBLINES\fR and \fBCOLUMNS\fR will also be ignored.
+.TP
+.B \-V
+reports the version of ncurses which was used in this program, and exits.
+The options are as follows:
+.TP
+.B \-x
+do not attempt to clear the terminal's scrollback buffer
+using the extended \*(``E3\*('' capability.
 .SH HISTORY
 A \fBclear\fP command appeared in 2.79BSD dated February 24, 1979.
 Later that was provided in Unix 8th edition (1985).
@@ -111,7 +139,8 @@ The Linux change, part of the 3.0 release, did not mention xterm,
 although it was cited in the Red Hat bug report (#683733)
 which led to the change.
 .bP
-Again, a few other terminal developers adopted the feature.  But the
+Again, a few other terminal developers adopted the feature.
+But the
 next relevant step was a change to the \fBclear\fP program in 2013
 to incorporate this extension.
 .bP

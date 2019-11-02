@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -48,8 +48,9 @@
 #include <termsort.c>
 #endif
 #include <transform.h>
+#include <tty_settings.h>
 
-MODULE_ID("$Id: tput.c,v 1.63 2016/10/23 01:08:28 tom Exp $")
+MODULE_ID("$Id: tput.c,v 1.79 2018/06/30 15:56:01 Nicholas.Marriott Exp $")
 
 #define PUTS(s)		fputs(s, stdout)
 
@@ -76,8 +77,26 @@ quit(int status, const char *fmt,...)
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: %s [-V] [-S] [-T term] capname\n", prg_name);
-    ExitProgram(EXIT_FAILURE);
+#define KEEP(s) s "\n"
+    static const char msg[] =
+    {
+	KEEP("")
+	KEEP("Options:")
+	KEEP("  -S <<       read commands from standard input")
+	KEEP("  -T TERM     use this instead of $TERM")
+	KEEP("  -V          print curses-version")
+	KEEP("  -x          do not try to clear scrollback")
+	KEEP("")
+	KEEP("Commands:")
+	KEEP("  clear       clear the screen")
+	KEEP("  init        initialize the terminal")
+	KEEP("  reset       reinitialize the terminal")
+	KEEP("  capname     unlike clear/init/reset, print value for capability \"capname\"")
+    };
+#undef KEEP
+    (void) fprintf(stderr, "Usage: %s [options] [command]\n", prg_name);
+    fputs(msg, stderr);
+    ExitProgram(ErrUsage);
 }
 
 static char *
@@ -116,8 +135,11 @@ exit_code(int token, int value)
     return result;
 }
 
+/*
+ * Returns nonzero on error.
+ */
 static int
-tput_cmd(int argc, char *argv[])
+tput_cmd(int fd, TTY * saved_settings, bool opt_x, int argc, char *argv[])
 {
     NCURSES_CONST char *name;
     char *s;
@@ -128,29 +150,31 @@ tput_cmd(int argc, char *argv[])
 
     name = check_aliases(argv[0], FALSE);
     if (is_reset || is_init) {
-	TTY mode, oldmode;
+	TTY oldmode;
 
 	int terasechar = -1;	/* new erase character */
 	int intrchar = -1;	/* new interrupt character */
 	int tkillchar = -1;	/* new kill character */
 
-	int my_fd = save_tty_settings(&mode);
-
-	reset_start(stdout, is_reset, is_init);
-	reset_tty_settings(&mode);
+	if (is_reset) {
+	    reset_start(stdout, TRUE, FALSE);
+	    reset_tty_settings(fd, saved_settings);
+	} else {
+	    reset_start(stdout, FALSE, TRUE);
+	}
 
 #if HAVE_SIZECHANGE
-	set_window_size(my_fd, &lines, &columns);
+	set_window_size(fd, &lines, &columns);
 #else
-	(void) my_fd;
+	(void) fd;
 #endif
-	set_control_chars(&mode, terasechar, intrchar, tkillchar);
-	set_conversions(&mode);
-	if (send_init_strings(&oldmode)) {
+	set_control_chars(saved_settings, terasechar, intrchar, tkillchar);
+	set_conversions(saved_settings);
+	if (send_init_strings(fd, &oldmode)) {
 	    reset_flush();
 	}
 
-	update_tty_settings(&oldmode, &mode);
+	update_tty_settings(&oldmode, saved_settings);
 	return 0;
     }
 
@@ -162,7 +186,7 @@ tput_cmd(int argc, char *argv[])
   retry:
 #endif
     if (strcmp(name, "clear") == 0) {
-	return clear_cmd();
+	return (clear_cmd(opt_x) == ERR) ? ErrUsage : 0;
     } else if ((status = tigetflag(name)) != -1) {
 	return exit_code(BOOLEAN, status);
     } else if ((status = tigetnum(name)) != CANCELLED_NUMERIC) {
@@ -177,26 +201,23 @@ tput_cmd(int argc, char *argv[])
 	    if ((np = _nc_find_entry(name, _nc_get_hash_table(termcap))) != 0) {
 		switch (np->nte_type) {
 		case BOOLEAN:
-		    if (bool_from_termcap[np->nte_index])
-			name = boolnames[np->nte_index];
+		    name = boolnames[np->nte_index];
 		    break;
 
 		case NUMBER:
-		    if (num_from_termcap[np->nte_index])
-			name = numnames[np->nte_index];
+		    name = numnames[np->nte_index];
 		    break;
 
 		case STRING:
-		    if (str_from_termcap[np->nte_index])
-			name = strnames[np->nte_index];
+		    name = strnames[np->nte_index];
 		    break;
 		}
 		goto retry;
 	    }
 	}
 #endif
-	quit(4, "unknown terminfo capability '%s'", name);
-    } else if (s != ABSENT_STRING) {
+	quit(ErrCapName, "unknown terminfo capability '%s'", name);
+    } else if (VALID_STRING(s)) {
 	if (argc > 1) {
 	    int k;
 	    int ignored;
@@ -262,33 +283,48 @@ main(int argc, char **argv)
     int c;
     char buf[BUFSIZ];
     int result = 0;
+    int fd;
+    TTY tty_settings;
+    bool opt_x = FALSE;		/* clear scrollback if possible */
+    bool is_alias;
+    bool need_tty;
 
     prg_name = check_aliases(_nc_rootname(argv[0]), TRUE);
 
     term = getenv("TERM");
 
-    while ((c = getopt(argc, argv, "ST:V")) != -1) {
+    while ((c = getopt(argc, argv, "ST:Vx")) != -1) {
 	switch (c) {
 	case 'S':
 	    cmdline = FALSE;
 	    break;
 	case 'T':
 	    use_env(FALSE);
+	    use_tioctl(TRUE);
 	    term = optarg;
 	    break;
 	case 'V':
 	    puts(curses_version());
 	    ExitProgram(EXIT_SUCCESS);
+	case 'x':		/* do not try to clear scrollback */
+	    opt_x = TRUE;
+	    break;
 	default:
 	    usage();
 	    /* NOTREACHED */
 	}
     }
 
+    is_alias = (is_clear || is_reset || is_init);
+    need_tty = ((is_reset || is_init) ||
+		(optind < argc &&
+		 (!strcmp(argv[optind], "reset") ||
+		  !strcmp(argv[optind], "init"))));
+
     /*
      * Modify the argument list to omit the options we processed.
      */
-    if (is_clear || is_reset || is_init) {
+    if (is_alias) {
 	if (optind-- < argc) {
 	    argc -= optind;
 	    argv += optind;
@@ -300,15 +336,17 @@ main(int argc, char **argv)
     }
 
     if (term == 0 || *term == '\0')
-	quit(2, "No value for $TERM and no -T specified");
+	quit(ErrUsage, "No value for $TERM and no -T specified");
 
-    if (setupterm(term, STDOUT_FILENO, &errret) != OK && errret <= 0)
-	quit(3, "unknown terminal \"%s\"", term);
+    fd = save_tty_settings(&tty_settings, need_tty);
+
+    if (setupterm(term, fd, &errret) != OK && errret <= 0)
+	quit(ErrTermType, "unknown terminal \"%s\"", term);
 
     if (cmdline) {
-	if ((argc <= 0) && !(is_clear || is_reset || is_init))
+	if ((argc <= 0) && !is_alias)
 	    usage();
-	ExitProgram(tput_cmd(argc, argv));
+	ExitProgram(tput_cmd(fd, &tty_settings, opt_x, argc, argv));
     }
 
     while (fgets(buf, sizeof(buf), stdin) != 0) {
@@ -329,9 +367,9 @@ main(int argc, char **argv)
 	argvec[argnum] = 0;
 
 	if (argnum != 0
-	    && tput_cmd(argnum, argvec) != 0) {
+	    && tput_cmd(fd, &tty_settings, opt_x, argnum, argvec) != 0) {
 	    if (result == 0)
-		result = 4;	/* will return value >4 */
+		result = ErrSystem(0);	/* will return value >4 */
 	    ++result;
 	}
     }

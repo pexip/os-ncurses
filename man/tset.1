@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2013,2016 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,14 +26,15 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: tset.1,v 1.43 2016/08/06 23:16:39 tom Exp $
+.\" $Id: tset.1,v 1.54 2018/07/28 21:30:27 tom Exp $
 .TH @TSET@ 1 ""
 .ie \n(.g .ds `` \(lq
 .el       .ds `` ``
 .ie \n(.g .ds '' \(rq
 .el       .ds '' ''
 .de bP
-.IP \(bu 4
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
 ..
 .SH NAME
 \fB@TSET@\fR, \fB@RESET@\fR \- terminal initialization
@@ -55,7 +56,7 @@ standard output,
 .bP
 standard input and
 .bP
-ultimately \*(lq/dev/tty\*(rq
+ultimately \*(``/dev/tty\*(''
 .PP
 to obtain terminal settings.
 Having retrieved these settings, \fB@TSET@\fP remembers which
@@ -81,31 +82,65 @@ option mappings are then applied (see the section
 .B TERMINAL TYPE MAPPING
 for more information).
 Then, if the terminal type begins with a question mark (\*(``?\*(''), the
-user is prompted for confirmation of the terminal type.  An empty
+user is prompted for confirmation of the terminal type.
+An empty
 response confirms the type, or, another type can be entered to specify
-a new type.  Once the terminal type has been determined, the terminfo
-entry for the terminal is retrieved.  If no terminfo entry is found
+a new type.
+Once the terminal type has been determined,
+the terminal description for the terminal is retrieved.
+If no terminal description is found
 for the type, the user is prompted for another terminal type.
 .PP
-Once the terminfo entry is retrieved, the window size, backspace, interrupt
-and line kill characters (among many other things) are set and the terminal
-and tab initialization strings are sent to the standard error output.
+Once the terminal description is retrieved,
+.bP
+if the \*(``\fB\-w\fP\*('' option is enabled, \fB@TSET@\fP may update
+the terminal's window size.
+.IP
+If the window size cannot be obtained from the operating system,
+but the terminal description (or environment, e.g., \fBLINES\fP
+and \fBCOLUMNS\fP variables specify this),
+use this to set the operating system's notion of the window size.
+.bP
+if the \*(``\fB\-c\fP\*('' option is enabled,
+the backspace, interrupt and line kill characters
+(among many other things) are set
+.bP
+unless the \*(``\fB\-I\fP\*('' option is enabled,
+the terminal
+and tab \fIinitialization\fP strings are sent to the standard error output,
+and \fB@TSET@\fP waits one second (in case a hardware reset was issued).
+.bP
 Finally, if the erase, interrupt and line kill characters have changed,
 or are not set to their default values, their values are displayed to the
 standard error output.
 .SS reset - reinitialization
 .PP
-When invoked as \fB@RESET@\fR, \fB@TSET@\fR sets cooked and echo modes,
-turns off cbreak and raw modes, turns on newline translation and
-resets any unset special characters to their default values before
-doing the terminal initialization described above.  This is useful
-after a program dies leaving a terminal in an abnormal state.  Note,
+When invoked as \fB@RESET@\fR, \fB@TSET@\fR sets the terminal
+modes to \*(``sane\*('' values:
+.bP
+sets cooked and echo modes,
+.bP
+turns off cbreak and raw modes,
+.bP
+turns on newline translation and
+.bP
+resets any unset special characters to their default values
+.PP
+before
+doing the terminal initialization described above.
+Also, rather than using the terminal \fIinitialization\fP strings,
+it uses the terminal \fIreset\fP strings.
+.PP
+The \fB@RESET@\fP command is useful
+after a program dies leaving a terminal in an abnormal state:
+.bP
 you may have to type
 .sp
     \fI<LF>\fP\fB@RESET@\fP\fI<LF>\fP
 .sp
 (the line-feed character is normally control-J) to get the terminal
 to work, as carriage-return may no longer work in the abnormal state.
+.bP
 Also, the terminal will often not echo the command.
 .SH OPTIONS 
 .PP
@@ -156,7 +191,7 @@ for details.
 reports the version of ncurses which was used in this program, and exits.
 .TP
 .B \-w
-Resize the window to match the size deduced via \fBsetupterm\fP.
+Resize the window to match the size deduced via \fBsetupterm\fP(3X).
 Normally this has no effect,
 unless \fBsetupterm\fP is not able to detect the window size.
 .PP
@@ -173,11 +208,13 @@ the terminal's capabilities into the shell's environment.
 This is done using the \fB\-s\fR option.
 .PP
 When the \fB\-s\fR option is specified, the commands to enter the information
-into the shell's environment are written to the standard output.  If
+into the shell's environment are written to the standard output.
+If
 the \fBSHELL\fR environmental variable ends in \*(``csh\*('', the commands
 are for \fBcsh\fR, otherwise, they are for \fBsh\fR.
 Note, the \fBcsh\fR commands set and unset the shell variable
-\fBnoglob\fR, leaving it unset.  The following line in the \fB.login\fR
+\fBnoglob\fR, leaving it unset.
+The following line in the \fB.login\fR
 or \fB.profile\fR files will initialize the environment correctly:
 .sp
     eval \`@TSET@ \-s options ... \`
@@ -198,7 +235,8 @@ guess that I'm on that kind of terminal\*(''.
 .PP
 The argument to the \fB\-m\fR option consists of an optional port type, an
 optional operator, an optional baud rate specification, an optional
-colon (\*(``:\*('') character and a terminal type.  The port type is a
+colon (\*(``:\*('') character and a terminal type.
+The port type is a
 string (delimited by either the operator or the colon character).
 The operator may be any combination of
 \*(``>\*('',
@@ -214,14 +252,17 @@ of the standard error output (which should be the control terminal).
 The terminal type is a string.
 .PP
 If the terminal type is not specified on the command line, the \fB\-m\fR
-mappings are applied to the terminal type.  If the port type and baud
+mappings are applied to the terminal type.
+If the port type and baud
 rate match the mapping, the terminal type specified in the mapping
-replaces the current type.  If more than one mapping is specified, the
+replaces the current type.
+If more than one mapping is specified, the
 first applicable mapping is used.
 .PP
 For example, consider the following mapping: \fBdialup>9600:vt100\fR.
 The port type is dialup , the operator is >, the baud rate
-specification is 9600, and the terminal type is vt100.  The result of
+specification is 9600, and the terminal type is vt100.
+The result of
 this mapping is to specify that if the terminal type is \fBdialup\fR,
 and the baud rate is greater than 9600 baud, a terminal type of
 \fBvt100\fR will be used.
@@ -242,16 +283,37 @@ and that \fBcsh\fR users insert a backslash character (\*(``\e\*('') before
 any exclamation marks (\*(``!\*('').
 .SH HISTORY
 .PP
-A \fBreset\fP command appeared in 2BSD (1979), written by Kurt Shoens.
+A \fBreset\fP command appeared in 2BSD (April 1979), written by Kurt Shoens.
+This program set the \fIerase\fP and \fIkill\fP characters
+to \fB^H\fP (backspace) and \fB@\fP respectively.
+Mark Horton improved that in 3BSD (October 1979), adding
+\fIintr\fP, \fIquit\fP, \fIstart\fP/\fIstop\fP and \fIeof\fP characters
+as well as changing the program to avoid modifying any user settings.
+.PP
+Later in 4.1BSD (December 1980),
+Mark Horton added a call to the \fBtset\fP program
+using the \fB\-I\fP and \fB\-Q\fP options, i.e.,
+using that to improve the terminal modes.
+With those options,
+that version of \fBreset\fP did not use the termcap database.
 .PP
 A separate \fBtset\fP command was provided in 2BSD by Eric Allman.
-While the oldest published source (from 1979) provides both programs,
+While the oldest published source (from 1979)
+provides both \fBtset\fP and \fBreset\fP,
 Allman's comments in the 2BSD source code indicate
 that he began work in October 1977,
 continuing development over the next few years.
 .PP
-In 1980, Eric Allman modified \fBtset\fP to provide a \*(lqreset\*(rq
-feature when the program was invoked as \fBreset\fP.
+In September 1980, Eric Allman modified \fBtset\fP,
+adding the code from the existing \*(``reset\*(''
+feature when \fBtset\fP was invoked as \fBreset\fP.
+Rather than simply copying the existing program,
+in this merged version, \fBtset\fP used the termcap database
+to do additional (re)initialization of the terminal.
+This version appeared in 4.1cBSD, late in 1982.
+.PP
+Other developers (e.g., Keith Bostic and Jim Bloom)
+continued to modify \fBtset\fP until 4.4BSD was released in 1993.
 .PP
 The \fBncurses\fR implementation
 was lightly adapted from the 4.4BSD sources for a terminfo environment by Eric
@@ -271,9 +333,10 @@ In fact, the commonly-used \fBreset\fP utility
 is always an alias for \fBtset\fP.
 .PP
 The \fB@TSET@\fR utility provides for backward-compatibility with BSD
-environments (under most modern UNIXes, \fB/etc/inittab\fR and \fIgetty\fR(1)
+environments (under most modern UNIXes, \fB/etc/inittab\fR and \fBgetty\fR(1)
 can set \fBTERM\fR appropriately for each dial-up line; this obviates what was
-\fB@TSET@\fR's most important use).  This implementation behaves like 4.4BSD
+\fB@TSET@\fR's most important use).
+This implementation behaves like 4.4BSD
 \fBtset\fP, with a few exceptions specified here.
 .PP
 A few options are different
@@ -298,9 +361,11 @@ None of them were documented in 4.3BSD and all are
 of limited utility at best.
 The \fB\-a\fR, \fB\-d\fR, and \fB\-p\fR options are similarly
 not documented or useful, but were retained as they appear to be in
-widespread use.  It is strongly recommended that any usage of these
+widespread use.
+It is strongly recommended that any usage of these
 three options be changed to use the \fB\-m\fR option instead.
-The \fB\-a\fP, \fB\-d\fP, and \fB\-p\fR options are therefore omitted from the usage summary above.
+The \fB\-a\fP, \fB\-d\fP, and \fB\-p\fR options
+are therefore omitted from the usage summary above.
 .PP
 Very old systems, e.g., 3BSD, used a different terminal driver which
 was replaced in 4BSD in the early 1980s.
@@ -367,14 +432,14 @@ system port name to terminal type mapping database (BSD versions only).
 terminal capability database
 .SH SEE ALSO
 .hy 0
-csh(1),
-sh(1),
-stty(1),
-curs_terminfo(3X),
-tty(4),
-terminfo(5),
-ttys(5),
-environ(7)
+\fBcsh\fP(1),
+\fBsh\fP(1),
+\fBstty\fP(1),
+\fBcurs_terminfo\fP(3X),
+\fBtty\fP(4),
+\fBterminfo\fP(5),
+\fBttys\fP(5),
+\fBenviron\fP(7)
 .hy
 .PP
 This describes \fBncurses\fR

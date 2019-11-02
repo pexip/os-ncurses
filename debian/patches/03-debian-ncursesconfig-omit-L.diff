@@ -1,6 +1,6 @@
 Author: Sven Joachim <svenjoac@gmx.de>
-Description: Omit -L part from ncurses5{w,}-config output
- "ncurses5-config --libs" includes a "-L" part which is not needed
+Description: Omit -L part from ncurses6{w,}-config output
+ "ncurses6-config --libs" includes a "-L" part which is not needed
  since the library is installed in a directory in the default linker
  search path.
  .
@@ -10,7 +10,7 @@ Description: Omit -L part from ncurses5{w,}-config output
 Bug-Debian: https://bugs.debian.org/638281
 Bug-Debian: https://bugs.debian.org/745479
 Forwarded: not-needed
-Last-Update: 2015-05-17
+Last-Update: 2018-06-03
 
 ---
  misc/ncurses-config.in |    7 -------
@@ -36,11 +36,11 @@ Last-Update: 2015-05-17
 -		else
 -			LIBDIR=-L$libdir
 -		fi
+ 		LIBS="@LIBS@ @PRIVATE_LIBS@"
  		if test @TINFO_NAME@ = @LIB_NAME@ ; then
  		sed -e 's,^[ ]*,,' -e 's, [ ]*, ,g' -e 's,[ ]*$,,' <<-ENDECHO
- 			$LIBDIR @EXTRA_LDFLAGS@ -l${THIS} @LIBS@
-@@ -148,7 +142,6 @@ ENDECHO
- 		echo "${includedir}"
+@@ -155,7 +149,6 @@ ENDECHO
+ 		echo $INCS
  		;;
  	--libdir)
 -		echo "${libdir}"

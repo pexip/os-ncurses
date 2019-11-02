@@ -1,13 +1,4 @@
-There are two binary-incompatible options which we need to wait for a SONAME
-change to enable:
-
-  --enable-ext-colors (will switch to soversion 6)
-  --enable-ext-mouse
-
-The configure test for the size of chtype_t was broken up until 5.4-7.
-It would be nice to remove --disable-lp64, --with-chtype, and
---with-mmask-t, but that is an incompatible change.
-
-The wide-character version of ncurses is basically mature at this point.
-At the next binary incompatible change, there may be no more reason to ship
-separate packages for it.
+A possibility that could be explored is to only ship development packages
+for the wide libraries.  Doing so would give automatic UTF-8 support at the
+cost of increased memory usage, see for instance
+https://bugzilla.redhat.com/show_bug.cgi?id=1270534#c26.

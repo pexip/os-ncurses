@@ -3,13 +3,13 @@ Summary: AdaCurses - Ada95 binding documentation for ncurses
 %define AppVersion MAJOR.MINOR
 %define AppRelease YYYYMMDD
 %define AppPackage %{AppProgram}-doc
-# $Id: AdaCurses-doc.spec,v 1.3 2015/04/26 23:39:31 tom Exp $
+# $Id: AdaCurses-doc.spec,v 1.5 2018/05/26 20:26:20 tom Exp $
 Name: %{AppPackage}
 Version: %{AppVersion}
 Release: %{AppRelease}
 License: MIT
 Group: Applications/Development
-URL: ftp://invisible-island.net/%{AppProgram}
+URL: ftp://ftp.invisible-island.net/%{AppProgram}
 Source0: %{AppProgram}-%{AppRelease}.tgz
 Packager: Thomas Dickey <dickey@invisible-island.net>
 
@@ -25,11 +25,11 @@ distribution, for patch-date YYYYMMDD.
 %build
 
 INSTALL_PROGRAM='${INSTALL}' \
-	./configure \
-		--target %{_target_platform} \
-		--prefix=%{_prefix} \
-		--datadir=%{_datadir} \
-		--with-ada-sharedlib
+%configure \
+	--target %{_target_platform} \
+	--prefix=%{_prefix} \
+	--datadir=%{_datadir} \
+	--with-ada-sharedlib
 
 %install
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT

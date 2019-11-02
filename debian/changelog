@@ -1,26 +1,264 @@
-ncurses (6.0+20161126-1+deb9u2) stretch; urgency=medium
+ncurses (6.1+20181013-2+deb10u2) buster; urgency=medium
 
-  * Cherry-pick upstream fix from the 20171125 patchlevel to fix
-    a buffer overflow in the _nc_write_entry function
-    (CVE-2017-16879, Closes: #882620).
+  * Cherry-pick tic fixes from upstream patchlevels 20191012,
+    20191015 and 20191019 (Closes: #942401).
+    - Check for invalid hashcode in _nc_find_type_entry and
+      nc_find_entry (CVE-2019-17594).
+    - Check for missing character after backslash in fmt_entry
+     (CVE-2019-17595).
+    - Check for acsc with odd length in dump_entry in check for
+      one-one mapping.
+    - Check for missing character after backslash in write_it.
+    - Modify tic to exit if it cannot remove a conflicting name, because
+      treating that as a partial success can cause an infinite loop in
+      use-resolution.
 
- -- Sven Joachim <svenjoac@gmx.de>  Thu, 28 Dec 2017 10:47:33 +0100
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 02 Nov 2019 19:16:19 +0100
 
-ncurses (6.0+20161126-1+deb9u1) stretch; urgency=medium
+ncurses (6.1+20181013-2+deb10u1) buster; urgency=medium
 
-  * Cherry-pick upstream fixes from the 20170701 and 20170708 patchlevels
-    for various crash bugs in the tic library and the tic binary
-    (CVE-2017-10684, CVE-2017-10685, CVE-2017-11112, CVE-2017-11113).
-  * Backport termcap-format fix from the 20170715 patchlevel, repairing a
-    regression from the above security fixes (see #868266).
-  * Cherry-pick upstream fixes from the 20170826 patchlevel for more
-    crash bugs in the tic library (CVE-2017-13728, CVE-2017-13729,
-    CVE-2017-13730, CVE-2017-13731, CVE-2017-13732, CVE-2017-13734,
-    Closes: #873723).
-  * Cherry-pick upstream fixes from the 20170902 patchlevel to fix
-    another crash bug in the tic program (CVE-2017-13733, Closes: #873746).
+  * Drop "rep" from xterm-new and derived terminfo descriptions
+    (Closes: #933053).
 
- -- Sven Joachim <svenjoac@gmx.de>  Thu, 07 Sep 2017 19:05:43 +0200
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 05 Aug 2019 20:03:21 +0200
+
+ncurses (6.1+20181013-2) unstable; urgency=medium
+
+  * Add Breaks against libmono-corlib4.5-cil (<< 4.6.2.7+dfsg-2)
+    to ncurses-base and ncurses-term (Closes: #899394).
+  * Add Build-Depends-Package annotations to the symbols files.
+  * Add a lintian override to ncurses-examples for
+    package-contains-documentation-outside-usr-share-doc.
+  * Upgrade Standards-Version to 4.3.0, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 11 Feb 2019 18:17:20 +0100
+
+ncurses (6.1+20181013-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Modify configure scripts to reduce relinking/ranlib during library
+      install.  Together with the next change, this Closes: #903790.
+  * Configure with --disable-relink.
+  * Fix wrong-path-for-interpreter lintian error in ncurses-examples.
+  * Add Breaks against libunibilium4 (<< 2.0.0-3) to ncurses-base and
+    ncurses-term (Closes: #904337).
+  * Upgrade Standards-Version to 4.2.1, no further changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 18 Oct 2018 19:45:43 +0200
+
+ncurses (6.1+20180714-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Fix a case where tiparm could return null if the format-string was
+      empty (Closes: #902630).
+    - Reduce use of _GNU_SOURCE for current glibc where _DEFAULT_SOURCE
+      combines with _XOPEN_SOURCE (Closes: #900987).
+    - Modify generated ncurses*config and ncurses.pc, ncursesw.pc, etc.,
+      to list helper libraries such as gpm for static linking (see #900839).
+  * Refresh Debian patches.
+  * Stop building special debug libraries, and mark the -dbg packages as
+    Multi-Arch: same (Addresses: #849003).
+  * Build the static libraries without gpm support (Closes: #900839).
+  * Upgrade Standards-Version to 4.1.5, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 17 Jul 2018 18:17:02 +0200
+
+ncurses (6.1+20180210-4) unstable; urgency=medium
+
+  * Take over the dvtm and dvtm-256color terminfo entries from the dvtm
+    package in ncurses-term (see #897953).
+  * Cherry-pick a fix from the 20180519 patchlevel: add check in
+    pair_content() to handle the case where caller asks for an
+    uninitialized pair (Closes: #898658).
+  * Move screen.xterm-256color and rxvt-unicode-256color terminfo entries
+    from ncurses-term to ncurses-base (Closes: #898666, #898948).
+  * Speed up binary-indep builds by building only the configurations
+    necessary to install and run tic.
+    - Move the g++-multilib build dependency to Build-Depends-Arch.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 21 May 2018 10:54:08 +0200
+
+ncurses (6.1+20180210-3) unstable; urgency=medium
+
+  * Add back "Suggests: ncurses-doc" to libncurses-dev which inadvertently
+    got lost in 6.1+20180210-1 (Closes: #897035).
+  * Cherry-pick a fix from the 20180414 patchlevel: add a null-pointer
+    check in _nc_parse_entry to handle an error when a use-name is invalid
+    syntax (report by Chung-Yi Lin, CVE-2018-10754).
+  * Add Breaks against versions of bash-static and zsh-static which were
+    built with libtinfo before 6.1 to ncurses-{base,term}.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 10 May 2018 16:17:05 +0200
+
+ncurses (6.1+20180210-2) unstable; urgency=medium
+
+  * Run dh_autoreconf at build time to regenerate configure scripts.
+    - Add a build-dependency on autoconf-dickey (>= 2.52+20170501).
+    - Drop debian/README.source.
+  * Drop Replaces/Breaks relationships on pre-wheezy packages.
+  * Add more Breaks to ncurses-base and ncurses-term against libraries
+    incompatible with the new terminfo format: libtinfo5 (<< 6.1) and
+    libunibilium0 (Closes: #891380).
+  * Update the watch files to version 4, and look for tarballs on
+    https://invisible-mirror.net.
+  * Bump debhelper compatibility level to 11.
+  * Use "dh_missing --fail-missing" instead of "dh_install --fail-missing".
+  * Temporarily add ncurses{w,}5-config compatibility symlinks.
+  * Upgrade Standards-Version to 4.1.4, no changes needed.
+  * Upload to unstable.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 26 Apr 2018 18:07:30 +0200
+
+ncurses (6.1+20180210-1) experimental; urgency=low
+
+  * New upstream patchlevel.
+  * Switch to the ncurses 6 ABI (Closes: #230990), but continue to ship
+    ABI 5 shared library packages for now.
+  * Change the section of the ABI 5 library packages to oldlibs and update
+    their descriptions accordingly.
+  * Merge lib{tinfo,ncurses5,ncursesw5}-dev into a new libncurses-dev
+    package and turn them into transitional packages (Closes: #840429).
+    Add a lintian override for the resulting duplicate-short-description
+    notices.
+  * Install the tinfo/tic libraries and the programs from the wide build,
+    enabling the extended terminfo format introduced in ncurses 6.1.
+    - Add Breaks against libslang2 (<< 2.3.1a-3) to ncurses-{base,term},
+      since it chokes on the new terminfo format (see #890769).
+  * Build a lib64ncursesw6 package on i386 and powerpc.
+  * Merge the multilib -dev packages into single lib{32,64}ncurses-dev
+    packages which have Conflicts/Replaces/Provides on the old ones.
+  * Install only one set of headers of headers, built from the wide
+    configuration.  Provide compatibility symlinks in usr/include/ncursesw.
+    - Configure with --disable-wattr-macros to avoid potential crashes, see
+      https://bugzilla.redhat.com/show_bug.cgi?id=1270534 for details.
+  * Update debian/TODO.
+  * Upgrade Standards-Version to 4.1.3, no further changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 22 Feb 2018 20:23:16 +0100
+
+ncurses (6.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * Refresh Debian patches.
+  * Update symbols files and bump shlibs.
+    - Bump the minimal version of symbols introduced after the 6.0
+      release to 6.1.
+    - Reset the minimal version of _nc_read_entry to back to 6.
+  * Pass --disable-stripping to the configure scripts.
+  * Update xterm.ti from xterm 331.
+  * Use https in the Homepage field.
+  * Update Vcs-{Browser,Git} URLs to point at salsa.debian.org.
+  * Change priority of all library packages to optional.
+  * Update years in debian/copyright.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 11 Feb 2018 21:06:50 +0100
+
+ncurses (6.0+20171125-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Modify _nc_write_entry() to truncate too-long filename (report by
+      Hosein Askari (CVE-2017-16879), Closes: #882620).
+  * Change priority of the -dbg packages and the udeb to optional.
+  * Delete trailing whitespace in debian/changelog.
+  * Bump debhelper compatibility level to 10.
+  * Switch from dh_autotools-dev_updateconfig to dh_update_autotools_config
+    and drop the explicit autotools-dev build dependency.
+  * Drop dpkg-dev build dependency, already fulfilled in oldstable.
+  * Do not require (fake)root for building the packages.
+  * Configure the test programs with --with-x11-rgb=/etc/X11/rgb.txt.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 27 Nov 2017 17:56:51 +0100
+
+ncurses (6.0+20170902-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Modify check in fmt_entry() to handle a cancelled reset string
+      (CVE-2017-13733, Closes: #873746).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 03 Sep 2017 19:25:01 +0200
+
+ncurses (6.0+20170827-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Add/improve checks in tic's parser to address invalid input
+      (Closes: #873723).
+      + Add a check in comp_scan.c to handle the special case where a
+        nontext file ending with a NUL rather than newline is given to
+        tic as input (CVE-2017-13728).
+      + Allow for cancelled capabilities in _nc_save_str (CVE-2017-13729).
+      + Add validity checks for "use=" target in _nc_parse_entry
+        (CVE-2017-13730).
+      + Check for invalid strings in postprocess_termcap (CVE-2017-13731).
+      + Reset secondary pointers on EOF in next_char() (CVE-2017-13732).
+      + Guard _nc_safe_strcpy() and _nc_safe_strcat() against calls using
+        cancelled strings (CVE-2017-13734).
+    - Add usage message to clear command (Closes: #371855).
+  * Configure the test programs with --datadir=/usr/share/ncurses-examples.
+  * Look for tarballs on ftp.invisible-island.net in the watch files.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 31 Aug 2017 21:01:20 +0200
+
+ncurses (6.0+20170715-2) unstable; urgency=medium
+
+  * Bump the minimal version of _nc_read_entry to 6.0+20170715 for partial
+    upgrades from testing.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 16 Jul 2017 18:23:24 +0200
+
+ncurses (6.0+20170715-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Bring back the _nc_read_entry symbol in libtinfo5 (Closes: #868328),
+      drop the _nc_read_entry2 symbol which should not have been added.
+    - Repair termcap-format from tic/infocmp broken in 20170701 fixes
+      (Closes: #868266).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 16 Jul 2017 18:07:56 +0200
+
+ncurses (6.0+20170708-1) unstable; urgency=high
+
+  * New upstream patchlevel.
+    - Correct a limit-check in fixes from CVE-2017-10684
+      (report by Sven Joachim).
+  * Amend the previous Debian changelog entry with CVE references.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 09 Jul 2017 11:50:10 +0200
+
+ncurses (6.0+20170701-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Add/improve checks in tic's parser to address invalid input
+      (Redhat #1464684, #1464685, #1464686, #1464691).
+      + alloc_entry.c, add a check for a null-pointer (CVE-2017-11113).
+      + parse_entry.c, add several checks for valid pointers (CVE-2017-11112),
+        as well as one check to ensure that a single character on a line is
+        not treated as the 2-character termcap short-name.
+    - Fix a problem with buffer overflow in dump_entry.c, which is
+      addressed by reducing the use of a fixed-size buffer
+      (CVE-2017-16084, CVE-2017-10685).
+  * Refresh Debian patches.
+  * Update symbols files.
+    - Add new symbol _nc_read_entry2.
+    - Drop wo unused symbols obsoleted in 2004: _nc_check_termtype and
+      _nc_resolve_uses.
+  * Blacklist dvtm and dvtm-256color terminfo entries which are shipped
+    in the dvtm package (Closes: #863969).
+  * Mark ncurses-doc as Multi-Arch: foreign.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 07 Jul 2017 22:00:14 +0200
+
+ncurses (6.0+20170408-1) experimental; urgency=low
+
+  * New upstream patchlevel.
+    - Fix a memory leak in the window-list when creating multiple
+      screens (reports by Andres Martinelli, Closes: #783486).
+  * Provide a curses(3) symlink to ncurses (Closes: #859293).
+  * Set LD_LIBRARY_PATH when building the test programs, fixes an
+    impending FTBFS when we switch to libncursesw6 from libncursesw5.
+  * Update years in debian/copyright.
+  * Change priority of libncurses5 to optional (see #852002).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 14 Apr 2017 12:21:10 +0200
 
 ncurses (6.0+20161126-1) unstable; urgency=low
 
@@ -188,7 +426,7 @@ ncurses (5.9+20150516-1) unstable; urgency=low
     - Enhance patch 03-debian-ncursesconfig-omit-L.diff to suppress
       output in the --libdir option, so that the scripts are identical
       across architectures.
-    - Drop the dependency of the -dev packages on ncurses-bin.  
+    - Drop the dependency of the -dev packages on ncurses-bin.
   * Remove support for upgrades from versions prior to 5.9-10.
     - Drop the maintainer scripts.
     - Drop Pre-Dependency of libncurses5 on libtinfo5.
@@ -224,7 +462,7 @@ ncurses (5.9+20140712-1) unstable; urgency=low
 
   * New upstream patchlevel.
     - Update libncurses5 and libncursesw5 symbols files, bump shlibs.
-  * Build-depend on autotools-dev to update config.{guess,sub}.  
+  * Build-depend on autotools-dev to update config.{guess,sub}.
   * Ship st and st-256color terminfo entries in ncurses-term, now that
     suckless-tools no longer includes them.
   * Update xterm.ti from xterm 308.
@@ -409,7 +647,7 @@ ncurses (5.9-3) unstable; urgency=low
   * Link the example programs against ncursesw rather than ncurses.
   * Add Breaks against binutils-gold (<< 2.21.53.20110910) to
     libncurses5-dev and libncursesw5-dev (see #644708).
-  * Mention in /etc/terminfo/README that ${HOME}/.terminfo is the first 
+  * Mention in /etc/terminfo/README that ${HOME}/.terminfo is the first
     directory where ncurses looks for terminfo files (LP: #384285).
   * Obtain CPPFLAGS from dpkg-buildflags.
   * Drop the lintian overrides introduced in 5.9-2.

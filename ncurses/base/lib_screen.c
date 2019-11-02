@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -41,7 +41,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_screen.c,v 1.85 2016/09/10 18:38:36 tom Exp $")
+MODULE_ID("$Id: lib_screen.c,v 1.93 2018/01/14 17:39:47 tom Exp $")
 
 #define MAX_SIZE 0x3fff		/* 16k is big enough for a window or pad */
 
@@ -61,7 +61,7 @@ MODULE_ID("$Id: lib_screen.c,v 1.85 2016/09/10 18:38:36 tom Exp $")
 #define TOP_SLIMIT _nc_SLIMIT(sizeof(buffer))
 
 /*
- * Use 0x8888 as the magic number for new-format files, since it cannot be
+ * Use 0x888888 as the magic number for new-format files, since it cannot be
  * mistaken for the _cury/_curx pair of 16-bit numbers which start the old
  * format.  It happens to be unused in the file 5.22 database (2015/03/07).
  */
@@ -365,7 +365,7 @@ decode_cchar(char *source, cchar_t *fillin, cchar_t *target)
 	    chars[append] = (wchar_t) value;
 	}
     }
-    setcchar(target, chars, attr, (short) color, NULL);
+    setcchar(target, chars, attr, (short) color, &color);
     return source;
 }
 #endif
@@ -655,7 +655,9 @@ getwin(FILE *filep)
 static void
 encode_attr(char *target, ARG_SLIMIT(limit)
 	    attr_t source,
-	    attr_t prior)
+	    attr_t prior,
+	    int source_color,
+	    int prior_color)
 {
 #if USE_STRING_HACKS && HAVE_SNPRINTF
     char *base = target;
@@ -664,7 +666,7 @@ encode_attr(char *target, ARG_SLIMIT(limit)
     prior &= ~A_CHARTEXT;
 
     *target = '\0';
-    if (source != prior) {
+    if ((source != prior) || (source_color != prior_color)) {
 	size_t n;
 	bool first = TRUE;
 
@@ -684,10 +686,10 @@ encode_attr(char *target, ARG_SLIMIT(limit)
 		target += strlen(target);
 	    }
 	}
-	if ((source & A_COLOR) != (prior & A_COLOR)) {
+	if (source_color != prior_color) {
 	    if (!first)
 		*target++ = '|';
-	    _nc_SPRINTF(target, CUR_SLIMIT "C%d", PAIR_NUMBER((int) source));
+	    _nc_SPRINTF(target, CUR_SLIMIT "C%d", source_color);
 	    target += strlen(target);
 	}
 
@@ -704,10 +706,16 @@ encode_cell(char *target, ARG_SLIMIT(limit) CARG_CH_T source, CARG_CH_T previous
 #endif
 #if NCURSES_WIDECHAR
     size_t n;
+    int source_pair = GetPair(*source);
+    int previous_pair = GetPair(*previous);
 
     *target = '\0';
-    if (previous->attr != source->attr) {
-	encode_attr(target, CUR_SLIMIT source->attr, previous->attr);
+    if ((previous->attr != source->attr) || (previous_pair != source_pair)) {
+	encode_attr(target, CUR_SLIMIT
+		    source->attr,
+		    previous->attr,
+		    source_pair,
+		    previous_pair);
     }
     target += strlen(target);
 #if NCURSES_EXT_COLORS
@@ -753,7 +761,11 @@ encode_cell(char *target, ARG_SLIMIT(limit) CARG_CH_T source, CARG_CH_T previous
 
     *target = '\0';
     if (AttrOfD(previous) != AttrOfD(source)) {
-	encode_attr(target, CUR_SLIMIT AttrOfD(source), AttrOfD(previous));
+	encode_attr(target, CUR_SLIMIT
+		    AttrOfD(source),
+		    AttrOfD(previous),
+		    GetPair(source),
+		    GetPair(previous));
     }
     target += strlen(target);
     *target++ = MARKER;
@@ -808,6 +820,7 @@ putwin(WINDOW *win, FILE *filep)
 	    const char *name = scr_params[y].name;
 	    const char *data = (char *) win + scr_params[y].offset;
 	    const void *dp = (const void *) data;
+	    attr_t attr;
 
 	    *buffer = '\0';
 	    if (!strncmp(name, "_pad.", 5) && !(win->_flags & _ISPAD)) {
@@ -815,8 +828,12 @@ putwin(WINDOW *win, FILE *filep)
 	    }
 	    switch (scr_params[y].type) {
 	    case pATTR:
+		attr = (*(const attr_t *) dp) & ~A_CHARTEXT;
 		encode_attr(buffer, TOP_SLIMIT
-			    (*(const attr_t *) dp) & ~A_CHARTEXT, A_NORMAL);
+			    (*(const attr_t *) dp) & ~A_CHARTEXT,
+			    A_NORMAL,
+			    COLOR_PAIR((int) attr),
+			    0);
 		break;
 	    case pBOOL:
 		if (!(*(const bool *) data)) {
@@ -826,8 +843,12 @@ putwin(WINDOW *win, FILE *filep)
 		name = "flag";
 		break;
 	    case pCHAR:
+		attr = (*(const attr_t *) dp);
 		encode_attr(buffer, TOP_SLIMIT
-			    * (const attr_t *) dp, A_NORMAL);
+			    * (const attr_t *) dp,
+			    A_NORMAL,
+			    COLOR_PAIR((int) attr),
+			    0);
 		break;
 	    case pINT:
 		if (!(*(const int *) dp))
