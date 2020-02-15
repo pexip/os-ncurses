@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -88,6 +88,7 @@
 #include <reset_cmd.h>
 #include <termcap.h>
 #include <transform.h>
+#include <tty_settings.h>
 
 #if HAVE_GETTTYNAM && HAVE_TTYENT_H
 #include <ttyent.h>
@@ -96,7 +97,7 @@
 char *ttyname(int fd);
 #endif
 
-MODULE_ID("$Id: tset.c,v 1.113 2016/10/22 23:34:47 tom Exp $")
+MODULE_ID("$Id: tset.c,v 1.120 2017/10/08 00:01:29 tom Exp $")
 
 #ifndef environ
 extern char **environ;
@@ -627,7 +628,7 @@ get_termcap_entry(int fd, char *userarg)
 	    ttype = askuser(0);
     }
     /* Find the terminfo entry.  If it doesn't exist, ask the user. */
-    while (setupterm((NCURSES_CONST char *) ttype, STDOUT_FILENO, &errret)
+    while (setupterm((NCURSES_CONST char *) ttype, fd, &errret)
 	   != OK) {
 	if (errret == 0) {
 	    (void) fprintf(stderr, "%s: unknown terminal type %s\n",
@@ -710,27 +711,36 @@ print_shell_commands(const char *ttype)
 static void
 usage(void)
 {
-#define DATA(s) s "\n"
+#define SKIP(s)			/* nothing */
+#define KEEP(s) s "\n"
     static const char msg[] =
     {
-	DATA("")
-	DATA("Options:")
-	DATA("  -c          set control characters")
-	DATA("  -e ch       erase character")
-	DATA("  -I          no initialization strings")
-	DATA("  -i ch       interrupt character")
-	DATA("  -k ch       kill character")
-	DATA("  -m mapping  map identifier to type")
-	DATA("  -Q          do not output control key settings")
-	DATA("  -r          display term on stderr")
-	DATA("  -s          output TERM set command")
-	DATA("  -V          print curses-version")
-	DATA("  -w          set window-size")
+	KEEP("")
+	KEEP("Options:")
+	SKIP("  -a arpanet  (obsolete)")
+	KEEP("  -c          set control characters")
+	SKIP("  -d dialup   (obsolete)")
+	KEEP("  -e ch       erase character")
+	KEEP("  -I          no initialization strings")
+	KEEP("  -i ch       interrupt character")
+	KEEP("  -k ch       kill character")
+	KEEP("  -m mapping  map identifier to type")
+	SKIP("  -p plugboard (obsolete)")
+	KEEP("  -Q          do not output control key settings")
+	KEEP("  -q          display term only, do no changes")
+	KEEP("  -r          display term on stderr")
+	SKIP("  -S          (obsolete)")
+	KEEP("  -s          output TERM set command")
+	KEEP("  -V          print curses-version")
+	KEEP("  -w          set window-size")
+	KEEP("")
+	KEEP("If neither -c/-w are given, both are assumed.")
     };
-#undef DATA
+#undef KEEP
+#undef SKIP
     (void) fprintf(stderr, "Usage: %s [options] [terminal]\n", _nc_progname);
     fputs(msg, stderr);
-    exit_error();
+    ExitProgram(EXIT_FAILURE);
     /* NOTREACHED */
 }
 
@@ -750,7 +760,7 @@ main(int argc, char **argv)
     int terasechar = -1;	/* new erase character */
     int intrchar = -1;		/* new interrupt character */
     int tkillchar = -1;		/* new kill character */
-    int my_fd = -1;
+    int my_fd;
     bool opt_c = FALSE;		/* set control-chars */
     bool opt_w = FALSE;		/* set window-size */
     TTY mode, oldmode;
@@ -758,7 +768,7 @@ main(int argc, char **argv)
     my_fd = STDERR_FILENO;
     obsolete(argv);
     noinit = noset = quiet = Sflag = sflag = showterm = 0;
-    while ((ch = getopt(argc, argv, "a:cd:e:Ii:k:m:p:qQSrsVw")) != -1) {
+    while ((ch = getopt(argc, argv, "a:cd:e:Ii:k:m:p:qQrSsVw")) != -1) {
 	switch (ch) {
 	case 'c':		/* set control-chars */
 	    opt_c = TRUE;
@@ -824,7 +834,7 @@ main(int argc, char **argv)
     if (!opt_c && !opt_w)
 	opt_c = opt_w = TRUE;
 
-    my_fd = save_tty_settings(&mode);
+    my_fd = save_tty_settings(&mode, TRUE);
     oldmode = mode;
 #ifdef TERMIOS
     ospeed = (NCURSES_OSPEED) cfgetospeed(&mode);
@@ -834,9 +844,9 @@ main(int argc, char **argv)
 
     if (same_program(_nc_progname, PROG_RESET)) {
 	reset_start(stderr, TRUE, FALSE);
-	reset_tty_settings(&mode);
+	reset_tty_settings(my_fd, &mode);
     } else {
-	reset_start(stderr, FALSE, FALSE);
+	reset_start(stderr, FALSE, TRUE);
     }
 
     ttype = get_termcap_entry(my_fd, *argv);
@@ -852,7 +862,7 @@ main(int argc, char **argv)
 	    set_conversions(&mode);
 
 	    if (!noinit) {
-		if (send_init_strings(&oldmode)) {
+		if (send_init_strings(my_fd, &oldmode)) {
 		    (void) putc('\r', stderr);
 		    (void) fflush(stderr);
 		    (void) napms(1000);		/* Settle the terminal. */

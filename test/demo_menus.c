@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2005-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 2005-2016,2017 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,7 +26,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: demo_menus.c,v 1.62 2016/09/10 23:30:33 tom Exp $
+ * $Id: demo_menus.c,v 1.65 2017/11/24 21:03:30 tom Exp $
  *
  * Demonstrate a variety of functions from the menu library.
  * Thomas Dickey - 2005/4/9
@@ -75,11 +75,8 @@ top_row				-
 #ifdef NCURSES_VERSION
 #ifdef TRACE
 static unsigned save_trace = TRACE_ORDINARY | TRACE_CALLS;
-extern unsigned _nc_tracing;
 static MENU *mpTrace;
 #endif
-#else
-#undef TRACE
 #endif
 
 typedef enum {
@@ -195,9 +192,9 @@ menu_offset(MenuNo number)
     int result = 0;
 
     if (okMenuNo(number)) {
-	int spc_desc, spc_rows, spc_cols;
-
+	int spc_rows;
 #ifdef NCURSES_VERSION
+	int spc_desc, spc_cols;
 	menu_spacing(mpBanner, &spc_desc, &spc_rows, &spc_cols);
 #else
 	spc_rows = 0;

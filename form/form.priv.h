@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -30,12 +30,15 @@
  *   Author:  Juergen Pfeifer, 1995,1997                                    *
  ****************************************************************************/
 
-/* $Id: form.priv.h,v 0.41 2016/10/29 22:30:23 tom Exp $ */
+/* $Id: form.priv.h,v 0.43 2018/04/14 21:06:14 Leon.Winter Exp $ */
 
 #ifndef FORM_PRIV_H
 #define FORM_PRIV_H 1
 /* *INDENT-OFF*/
 #include "curses.priv.h"
+
+#define NCURSES_OPAQUE_FORM  0
+
 #include "mf_common.h"
 
 #if USE_WIDEC_SUPPORT
@@ -163,7 +166,8 @@ TypeArgument;
 #define ALL_FIELD_OPTS (Field_Options)( \
 			STD_FIELD_OPTS |\
 			O_DYNAMIC_JUSTIFY |\
-			O_NO_LEFT_STRIP)
+			O_NO_LEFT_STRIP |\
+			O_EDGE_INSERT_STAY)
 
 #define C_BLANK ' '
 #define is_blank(c) ((c)==C_BLANK)

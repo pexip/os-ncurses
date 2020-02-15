@@ -1,5 +1,5 @@
 dnl***************************************************************************
-dnl Copyright (c) 2010-2015,2016 Free Software Foundation, Inc.              *
+dnl Copyright (c) 2010-2016,2018 Free Software Foundation, Inc.              *
 dnl                                                                          *
 dnl Permission is hereby granted, free of charge, to any person obtaining a  *
 dnl copy of this software and associated documentation files (the            *
@@ -28,18 +28,20 @@ dnl***************************************************************************
 dnl
 dnl Author: Thomas E. Dickey
 dnl
-dnl $Id: configure.in,v 1.62 2016/05/21 22:25:03 tom Exp $
+dnl $Id: configure.in,v 1.66 2018/06/17 01:21:16 tom Exp $
 dnl Process this file with autoconf to produce a configure script.
 dnl
-dnl See http://invisible-island.net/autoconf/ for additional information.
+dnl See https://invisible-island.net/autoconf/ for additional information.
 dnl
 dnl ---------------------------------------------------------------------------
 AC_PREREQ(2.52.20030208)
-AC_REVISION($Revision: 1.62 $)
+AC_REVISION($Revision: 1.66 $)
 AC_INIT(gen/gen.c)
 AC_CONFIG_HEADER(include/ncurses_cfg.h:include/ncurses_cfg.hin)
 
 CF_TOP_BUILDDIR
+
+CF_HELP_MESSAGE(General Options:)
 
 CF_WITH_SYSTYPE
 
@@ -61,6 +63,9 @@ CF_PROG_AWK
 CF_PROG_EGREP
 AC_PROG_INSTALL
 CF_PROG_LN_S
+
+CF_PROG_INSTALL
+CF_INSTALL_OPTS
 
 AC_SYS_LONG_FILE_NAMES
 
@@ -228,7 +233,7 @@ fi
 AC_SUBST(BROKEN_LINKER)
 
 # Check to define _XOPEN_SOURCE "automatically"
-CF_XOPEN_SOURCE
+CF_XOPEN_SOURCE(600)
 
 CF_LARGEFILE
 

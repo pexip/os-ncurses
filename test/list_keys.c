@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2016 Free Software Foundation, Inc.                        *
+ * Copyright (c) 2016-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,7 +26,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: list_keys.c,v 1.17 2016/09/10 21:24:44 tom Exp $
+ * $Id: list_keys.c,v 1.24 2018/05/20 18:56:56 tom Exp $
  *
  * Author: Thomas E Dickey
  *
@@ -89,7 +89,7 @@ show_key(const char *name, bool show)
 {
     int width = 0;
     char buffer[10];
-    NCURSES_CONST char *value = tigetstr(name);
+    NCURSES_CONST char *value = tigetstr((NCURSES_CONST char *) name);
 
     if (show && t_opt)
 	fputc('"', stdout);
@@ -159,7 +159,7 @@ show_key(const char *name, bool show)
 }
 
 static bool
-valid_key(const char *name, TERMINAL ** terms, int count)
+valid_key(const char *name, TERMINAL **terms, int count)
 {
     bool result = FALSE;
     if (*name == 'k') {
@@ -209,8 +209,8 @@ draw_line(int width)
 static const char *
 modified_key(const char *name)
 {
-    static char result[80];
-    char buffer[sizeof(result)];
+    static char result[100];
+    char buffer[sizeof(result) - 10];
     int value;
     char chr;
     static const char *modifiers[][2] =
@@ -238,7 +238,7 @@ modified_key(const char *name)
 	map &= ~6;
 	map |= (bit1 << 1) | (bit2 >> 1);
 	_nc_SPRINTF(result, _nc_SLIMIT(sizeof(result))
-		    "%sF%d", modifiers[map][f_opt], 1 + key);
+		    "%sF%d", modifiers[map][(unsigned) f_opt], 1 + key);
     } else if (sscanf(name, "k%[A-Z]%d%c", buffer, &value, &chr) == 2 &&
 	       (value > 1 &&
 		value <= 8) &&
@@ -253,12 +253,12 @@ modified_key(const char *name)
 		!strcmp(buffer, "NXT") ||
 		!strcmp(buffer, "PRV"))) {
 	_nc_SPRINTF(result, _nc_SLIMIT(sizeof(result))
-		    "%sk%s", modifiers[value - 1][f_opt], buffer);
+		    "%sk%s", modifiers[value - 1][(unsigned) f_opt], buffer);
     } else if (sscanf(name, "k%[A-Z]%c", buffer, &chr) == 1 &&
 	       (!strcmp(buffer, "UP") ||
 		!strcmp(buffer, "DN"))) {
 	_nc_SPRINTF(result, _nc_SLIMIT(sizeof(result))
-		    "%sk%s", modifiers[1][f_opt], buffer);
+		    "%sk%s", modifiers[1][(unsigned) f_opt], buffer);
     } else {
 	*result = '\0';
     }
@@ -266,7 +266,7 @@ modified_key(const char *name)
 }
 
 static void
-list_keys(TERMINAL ** terms, int count)
+list_keys(TERMINAL **terms, int count)
 {
     int j, k;
     int widths0 = 0;
@@ -288,7 +288,7 @@ list_keys(TERMINAL ** terms, int count)
 	TERMTYPE *term;
 	for (k = 0; k < count; ++k) {
 	    set_curterm(terms[k]);
-	    term = &(cur_term->type);
+	    term = (TERMTYPE *) cur_term;
 	    total += (size_t) (NUM_STRINGS(term) - STRCOUNT);
 	}
     }
@@ -298,7 +298,7 @@ list_keys(TERMINAL ** terms, int count)
 	Type(j) = ktOther;
 	if (sscanf(strnames[j], "kf%d", &k) == 1) {
 	    Type(j) = ktFunction;
-	} else if (!strncmp(strnames[j], "kcu", 3)) {
+	} else if (!(strncmp) (strnames[j], "kcu", 3)) {
 	    Type(j) = ktCursor;
 	}
 	Name(j) = strnames[j];
@@ -309,7 +309,7 @@ list_keys(TERMINAL ** terms, int count)
 	int m, n;
 	for (k = 0; k < count; ++k) {
 	    set_curterm(terms[k]);
-	    term = &(cur_term->type);
+	    term = (TERMTYPE *) cur_term;
 	    for (n = STRCOUNT; n < NUM_STRINGS(term); ++n) {
 		bool found = FALSE;
 		const char *estr = ExtStrname(term, (int) n, strnames);
@@ -485,6 +485,8 @@ main(int argc, char *argv[])
 	terms[0] = cur_term;
 	list_keys(terms, 1);
     }
+
+    free(terms);
 
     ExitProgram(EXIT_SUCCESS);
 }

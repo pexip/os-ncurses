@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 2002-2012,2015 Free Software Foundation, Inc.              *
+.\" Copyright (c) 2002-2017,2018 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,9 +26,10 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_bkgrnd.3x,v 1.6 2015/07/21 00:18:42 tom Exp $
+.\" $Id: curs_bkgrnd.3x,v 1.9 2018/07/28 21:34:06 tom Exp $
 .de bP
-.IP \(bu 4
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
 ..
 .TH curs_bkgrnd 3X ""
 .SH NAME
@@ -62,7 +63,8 @@ background of the named window.
 The window background is a \fBcchar_t\fR consisting of
 any combination of attributes (i.e., rendition) and a complex character.
 The attribute part of the background is combined (OR'ed) with all non-blank
-characters that are written into the window with \fBwaddch\fR.  Both
+characters that are written into the window with \fBwaddch\fR.
+Both
 the character and attribute parts of the background are combined with
 the blank characters.
 The background becomes a property of the
@@ -87,6 +89,8 @@ appears, it is changed to the new background character.
 .PP
 The \fBgetbkgrnd\fR function returns the given window's current background
 character/attribute pair via the \fBwch\fR pointer.
+If the given window pointer is null,
+the character is not updated (but no error returned).
 .SH NOTES
 Note that
 \fBbkgrnd\fR,
@@ -98,8 +102,11 @@ may be macros.
 The \fBbkgrndset\fR and \fBwbkgrndset\fR routines do not return a value.
 .PP
 Upon successful completion, the other functions return \fBOK\fR.
-Otherwise, they return \fBERR\fR.
+Otherwise, they return \fBERR\fR:
+.bP
 A null window pointer is treated as an error.
+.bP
+A null character pointer is treated as an error.
 .SH SEE ALSO
 \fBcurses\fR(3X),
 \fBcurs_bkgd\fR(3X)

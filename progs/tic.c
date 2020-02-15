@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -48,7 +48,7 @@
 #include <parametrized.h>
 #include <transform.h>
 
-MODULE_ID("$Id: tic.c,v 1.228 2016/11/26 22:01:41 tom Exp $")
+MODULE_ID("$Id: tic.c,v 1.256 2018/03/18 00:05:10 tom Exp $")
 
 #define STDIN_NAME "<stdin>"
 
@@ -62,8 +62,12 @@ static bool showsummary = FALSE;
 static char **namelst = 0;
 static const char *to_remove;
 
-static void (*save_check_termtype) (TERMTYPE *, bool);
-static void check_termtype(TERMTYPE *tt, bool);
+#if NCURSES_XNAMES
+static bool using_extensions = FALSE;
+#endif
+
+static void (*save_check_termtype) (TERMTYPE2 *, bool);
+static void check_termtype(TERMTYPE2 *tt, bool);
 
 static const char usage_string[] = "\
 [-e names] \
@@ -114,6 +118,7 @@ cleanup(void)
 
 #if NO_LEAKS
     free_namelist(namelst);
+    _nc_leaks_dump_entry();
 #endif
     if (tmp_fp != 0)
 	fclose(tmp_fp);
@@ -669,8 +674,6 @@ add_digit(int *target, int source)
     *target = (*target * 10) + (source - '0');
 }
 
-#define VtoTrace(opt) (unsigned) ((opt > 0) ? opt : (opt == 0))
-
 int
 main(int argc, char *argv[])
 {
@@ -849,6 +852,7 @@ main(int argc, char *argv[])
 	    /* FALLTHRU */
 	case 'x':
 	    use_extended_names(TRUE);
+	    using_extensions = TRUE;
 	    break;
 #endif
 	default:
@@ -975,7 +979,8 @@ main(int argc, char *argv[])
 
 		if (len > (infodump ? MAX_TERMINFO_LENGTH : MAX_TERMCAP_LENGTH))
 		    (void) fprintf(stderr,
-				   "warning: resolved %s entry is %d bytes long\n",
+				   "%s: resolved %s entry is %d bytes long\n",
+				   _nc_progname,
 				   _nc_first_name(qp->tterm.term_names),
 				   len);
 	    }
@@ -1088,7 +1093,7 @@ main(int argc, char *argv[])
  * Check if the alternate character-set capabilities are consistent.
  */
 static void
-check_acs(TERMTYPE *tp)
+check_acs(TERMTYPE2 *tp)
 {
     if (VALID_STRING(acs_chars)) {
 	const char *boxes = "lmkjtuvwqxn";
@@ -1124,11 +1129,32 @@ check_acs(TERMTYPE *tp)
     }
 }
 
+static bool
+same_color(NCURSES_CONST char *oldcap, NCURSES_CONST char *newcap, int limit)
+{
+    bool result = FALSE;
+    if (limit > 16)
+	limit = 16;
+    if (limit >= 8) {
+	int n;
+	int same;
+	for (n = same = 0; n < limit; ++n) {
+	    char *oldvalue = strdup(TPARM_1(oldcap, n));
+	    char *newvalue = strdup(TPARM_1(newcap, n));
+	    same += !strcmp(oldvalue, newvalue);
+	    free(oldvalue);
+	    free(newvalue);
+	}
+	result = (same == limit);
+    }
+    return result;
+}
+
 /*
  * Check if the color capabilities are consistent
  */
 static void
-check_colors(TERMTYPE *tp)
+check_colors(TERMTYPE2 *tp)
 {
     if ((max_colors > 0) != (max_pairs > 0)
 	|| ((max_colors > max_pairs) && (initialize_pair == 0)))
@@ -1140,21 +1166,29 @@ check_colors(TERMTYPE *tp)
     PAIRED(set_color_pair, initialize_pair);
 
     if (VALID_STRING(set_foreground)
-	&& VALID_STRING(set_a_foreground)
-	&& !_nc_capcmp(set_foreground, set_a_foreground))
-	_nc_warning("expected setf/setaf to be different");
+	&& VALID_STRING(set_a_foreground)) {
+	if (!_nc_capcmp(set_foreground, set_a_foreground)) {
+	    _nc_warning("expected setf/setaf to be different");
+	} else if (same_color(set_foreground, set_a_foreground, max_colors)) {
+	    _nc_warning("setf/setaf are equivalent");
+	}
+    }
 
     if (VALID_STRING(set_background)
-	&& VALID_STRING(set_a_background)
-	&& !_nc_capcmp(set_background, set_a_background))
-	_nc_warning("expected setb/setab to be different");
+	&& VALID_STRING(set_a_background)) {
+	if (!_nc_capcmp(set_background, set_a_background)) {
+	    _nc_warning("expected setb/setab to be different");
+	} else if (same_color(set_background, set_a_background, max_colors)) {
+	    _nc_warning("setb/setab are equivalent");
+	}
+    }
 
     /* see: has_colors() */
     if (VALID_NUMERIC(max_colors) && VALID_NUMERIC(max_pairs)
-	&& (((set_foreground != NULL)
-	     && (set_background != NULL))
-	    || ((set_a_foreground != NULL)
-		&& (set_a_background != NULL))
+	&& ((VALID_STRING(set_foreground)
+	     && VALID_STRING(set_background))
+	    || (VALID_STRING(set_a_foreground)
+		&& VALID_STRING(set_a_background))
 	    || set_color_pair)) {
 	if (!VALID_STRING(orig_pair) && !VALID_STRING(orig_colors))
 	    _nc_warning("expected either op/oc string for resetting colors");
@@ -1244,7 +1278,7 @@ check_ansi_cursor(char *list[4])
     }
     if (!repeated) {
 	char *up = list[1];
-	size_t prefix = csi_length(up);
+	size_t prefix = (size_t) csi_length(up);
 
 	if (prefix) {
 	    suffix = prefix;
@@ -1287,7 +1321,7 @@ check_ansi_cursor(char *list[4])
 #define UNEXPECTED(name) if (PRESENT(name)) _nc_warning("unexpected " #name ", for %s", why)
 
 static void
-check_noaddress(TERMTYPE *tp, const char *why)
+check_noaddress(TERMTYPE2 *tp, const char *why)
 {
     UNEXPECTED(column_address);
     UNEXPECTED(cursor_address);
@@ -1299,7 +1333,7 @@ check_noaddress(TERMTYPE *tp, const char *why)
 }
 
 static void
-check_cursor(TERMTYPE *tp)
+check_cursor(TERMTYPE2 *tp)
 {
     int count;
     char *list[4];
@@ -1418,7 +1452,7 @@ check_cursor(TERMTYPE *tp)
  * is mapped inconsistently.
  */
 static void
-check_keypad(TERMTYPE *tp)
+check_keypad(TERMTYPE2 *tp)
 {
     char show[80];
 
@@ -1528,29 +1562,64 @@ check_keypad(TERMTYPE *tp)
 }
 
 static void
-check_printer(TERMTYPE *tp)
+check_printer(TERMTYPE2 *tp)
 {
+    (void) tp;
+#if defined(enter_doublewide_mode) && defined(exit_doublewide_mode)
     PAIRED(enter_doublewide_mode, exit_doublewide_mode);
+#endif
+#if defined(enter_italics_mode) && defined(exit_italics_mode)
     PAIRED(enter_italics_mode, exit_italics_mode);
+#endif
+#if defined(enter_leftward_mode) && defined(exit_leftward_mode)
     PAIRED(enter_leftward_mode, exit_leftward_mode);
+#endif
+#if defined(enter_micro_mode) && defined(exit_micro_mode)
     PAIRED(enter_micro_mode, exit_micro_mode);
+#endif
+#if defined(enter_shadow_mode) && defined(exit_shadow_mode)
     PAIRED(enter_shadow_mode, exit_shadow_mode);
+#endif
+#if defined(enter_subscript_mode) && defined(exit_subscript_mode)
     PAIRED(enter_subscript_mode, exit_subscript_mode);
+#endif
+#if defined(enter_superscript_mode) && defined(exit_superscript_mode)
     PAIRED(enter_superscript_mode, exit_superscript_mode);
+#endif
+#if defined(enter_upward_mode) && defined(exit_upward_mode)
     PAIRED(enter_upward_mode, exit_upward_mode);
+#endif
 
+#if defined(start_char_set_def) && defined(stop_char_set_def)
     ANDMISSING(start_char_set_def, stop_char_set_def);
+#endif
 
     /* if we have a parameterized form, then the non-parameterized is easy */
+#if defined(set_bottom_margin_parm) && defined(set_bottom_margin)
     ANDMISSING(set_bottom_margin_parm, set_bottom_margin);
+#endif
+#if defined(set_left_margin_parm) && defined(set_left_margin)
     ANDMISSING(set_left_margin_parm, set_left_margin);
+#endif
+#if defined(set_right_margin_parm) && defined(set_right_margin)
     ANDMISSING(set_right_margin_parm, set_right_margin);
+#endif
+#if defined(set_top_margin_parm) && defined(set_top_margin)
     ANDMISSING(set_top_margin_parm, set_top_margin);
+#endif
 
+#if defined(parm_down_micro) && defined(micro_down)
     ANDMISSING(parm_down_micro, micro_down);
+#endif
+#if defined(parm_left_micro) && defined(micro_left)
     ANDMISSING(parm_left_micro, micro_left);
+#endif
+#if defined(parm_right_micro) && defined(micro_right)
     ANDMISSING(parm_right_micro, micro_right);
+#endif
+#if defined(parm_up_micro) && defined(micro_up)
     ANDMISSING(parm_up_micro, micro_up);
+#endif
 }
 
 static bool
@@ -1564,7 +1633,7 @@ uses_SGR_39_49(const char *value)
  * Check consistency of termcap extensions related to "screen".
  */
 static void
-check_screen(TERMTYPE *tp)
+check_screen(TERMTYPE2 *tp)
 {
 #if NCURSES_XNAMES
     if (_nc_user_definable) {
@@ -1574,6 +1643,9 @@ check_screen(TERMTYPE *tp)
 	bool have_kmouse = FALSE;
 	bool use_sgr_39_49 = FALSE;
 	char *name = _nc_first_name(tp->term_names);
+	bool is_screen = !strncmp(name, "screen", 6);
+	bool screen_base = (is_screen
+			    && strchr(name, '.') == 0);
 
 	if (!VALID_BOOLEAN(have_bce)) {
 	    have_bce = FALSE;
@@ -1595,12 +1667,10 @@ check_screen(TERMTYPE *tp)
 
 	if (have_XM && have_XT) {
 	    _nc_warning("Screen's XT capability conflicts with XM");
-	} else if (have_XT
-		   && strstr(name, "screen") != 0
-		   && strchr(name, '.') != 0) {
+	} else if (have_XT && screen_base) {
 	    _nc_warning("Screen's \"screen\" entries should not have XT set");
 	} else if (have_XT) {
-	    if (!have_kmouse && have_bce) {
+	    if (!have_kmouse && is_screen) {
 		if (VALID_STRING(key_mouse)) {
 		    _nc_warning("Value of kmous inconsistent with screen's usage");
 		} else {
@@ -1614,8 +1684,11 @@ check_screen(TERMTYPE *tp)
 	    if (VALID_STRING(to_status_line))
 		_nc_warning("\"tsl\" capability is redundant, given XT");
 	} else {
-	    if (have_kmouse && !have_XM)
+	    if (have_kmouse
+		&& !have_XM
+		&& !screen_base && strchr(name, '+') == 0) {
 		_nc_warning("Expected XT to be set, given kmous");
+	    }
 	}
     }
 #endif
@@ -1716,12 +1789,31 @@ expected_params(const char *name)
 }
 
 /*
+ * ncurses assumes that u6 could be used for getting the cursor-position, but
+ * that is not implemented.  Make a special case for that, to quiet needless
+ * warnings.
+ *
+ * There are other string-capability extensions (see terminfo.src) which could
+ * have parameters such as "Ss", "%u", but are not used by ncurses.
+ */
+static int
+is_user_capability(const char *name)
+{
+    int result = -1;
+    if (name[0] == 'u' &&
+	(name[1] >= '0' && name[1] <= '9') &&
+	name[2] == '\0')
+	result = (name[1] == '6') ? 2 : 0;
+    return result;
+}
+
+/*
  * Make a quick sanity check for the parameters which are used in the given
  * strings.  If there are no "%p" tokens, then there should be no other "%"
  * markers.
  */
 static void
-check_params(TERMTYPE *tp, const char *name, char *value)
+check_params(TERMTYPE2 *tp, const char *name, char *value, int extended)
 {
     int expected = expected_params(name);
     int actual = 0;
@@ -1758,6 +1850,14 @@ check_params(TERMTYPE *tp, const char *name, char *value)
 	s++;
     }
 
+    if (extended) {
+	if (actual > 0) {
+	    _nc_warning("extended %s capability has %d parameters",
+			name, actual);
+	    expected = actual;
+	}
+    }
+
     if (params[0]) {
 	_nc_warning("%s refers to parameter 0 (%%p0), which is not allowed", name);
     }
@@ -1769,6 +1869,32 @@ check_params(TERMTYPE *tp, const char *name, char *value)
 	for (n = 1; n < actual; n++) {
 	    if (!params[n])
 		_nc_warning("%s omits parameter %d", name, n);
+	}
+    }
+
+    /*
+     * Counting "%p" markers does not account for termcap expressions which
+     * may not have been fully translated.  Also, tparm does its own analysis.
+     * Report differences here.
+     */
+    if (actual >= 0) {
+	char *p_is_s[NUM_PARM];
+	int popcount;
+	int analyzed = _nc_tparm_analyze(value, p_is_s, &popcount);
+	if (analyzed < popcount) {
+	    analyzed = popcount;
+	}
+	if (actual != analyzed && expected != analyzed) {
+	    int user_cap = is_user_capability(name);
+	    if ((user_cap == analyzed) && using_extensions) {
+		;		/* ignore */
+	    } else if (user_cap >= 0) {
+		_nc_warning("tparm will use %d parameters for %s",
+			    analyzed, name);
+	    } else {
+		_nc_warning("tparm analyzed %d parameters for %s, expected %d",
+			    analyzed, name, actual);
+	    }
 	}
     }
 }
@@ -1826,7 +1952,6 @@ skip_DECSCNM(const char *value, int *flag)
     *flag = -1;
     if (value != 0) {
 	int skip = csi_length(value);
-	fprintf(stderr, "test %d:%s\n", skip, value);
 	if (skip > 0 &&
 	    value[skip++] == '?' &&
 	    value[skip++] == '5') {
@@ -1842,7 +1967,7 @@ skip_DECSCNM(const char *value, int *flag)
 }
 
 static void
-check_delays(const char *name, const char *value)
+check_delays(TERMTYPE2 *tp, const char *name, const char *value)
 {
     const char *p, *q;
     const char *first = 0;
@@ -1892,6 +2017,14 @@ check_delays(const char *name, const char *value)
 		    _nc_warning("function-key %s has delay", name);
 		} else if (proportional && !line_capability(name)) {
 		    _nc_warning("non-line capability using proportional delay: %s", name);
+		} else if (!xon_xoff &&
+			   !mandatory &&
+			   strchr(_nc_first_name(tp->term_names), '+') == 0) {
+		    _nc_warning("%s in %s is used since no xon/xoff",
+				(proportional
+				 ? "proportional delay"
+				 : "delay"),
+				name);
 		}
 	    } else {
 		p = q - 1;	/* restart scan */
@@ -1942,7 +2075,7 @@ check_1_infotocap(const char *name, NCURSES_CONST char *value, int count)
     for (k = 1; k <= NUM_PARM; k++) {
 	numbers[k] = count;
 	_nc_SPRINTF(next,
-		    _nc_SLIMIT(sizeof(blob) - (next - blob))
+		    _nc_SLIMIT(sizeof(blob) - (size_t) (next - blob))
 		    "XYZ%d", count);
 	strings[k] = next;
 	next += strlen(next) + 1;
@@ -1971,7 +2104,7 @@ check_1_infotocap(const char *name, NCURSES_CONST char *value, int count)
 			 myParam(9));
 	break;
     }
-    return result;
+    return strdup(result);
 }
 
 #define IsDelay(ch) ((ch) == '.' || isdigit(UChar(ch)))
@@ -2096,7 +2229,7 @@ same_ti_tc(const char *ti, const char *tc, bool * embedded)
  * Check terminfo to termcap translation.
  */
 static void
-check_infotocap(TERMTYPE *tp, int i, const char *value)
+check_infotocap(TERMTYPE2 *tp, int i, const char *value)
 {
     const char *name = ExtStrname(tp, i, strnames);
     int params = (((i < (int) SIZEOF(parametrized)) &&
@@ -2123,7 +2256,8 @@ check_infotocap(TERMTYPE *tp, int i, const char *value)
 	    || !strcmp(name, "setb")
 	    || !strcmp(name, "setaf")
 	    || !strcmp(name, "setab")) {
-	    limit = max_colors;
+	    if ((limit = max_colors) > 16)
+		limit = 16;
 	}
 	for (count = 0; count < limit; ++count) {
 	    char *ti_check = check_1_infotocap(name, ti_value, count);
@@ -2139,6 +2273,8 @@ check_infotocap(TERMTYPE *tp, int i, const char *value)
 		_nc_warning("tparm-conversion of %s(%d) differs between\n\tterminfo %s\n\ttermcap  %s",
 			    name, count, ti_check, tc_check);
 	    }
+	    free(ti_check);
+	    free(tc_check);
 	}
     } else if (params == 0 && !same_ti_tc(ti_value, tc_value, &embedded)) {
 	if (embedded) {
@@ -2271,7 +2407,7 @@ similar_sgr(int num, char *a, char *b)
 }
 
 static char *
-check_sgr(TERMTYPE *tp, char *zero, int num, char *cap, const char *name)
+check_sgr(TERMTYPE2 *tp, char *zero, int num, char *cap, const char *name)
 {
     char *test;
 
@@ -2337,7 +2473,7 @@ typedef struct {
 } NAME_VALUE;
 
 static NAME_VALUE *
-get_fkey_list(TERMTYPE *tp)
+get_fkey_list(TERMTYPE2 *tp)
 {
     NAME_VALUE *result = typeMalloc(NAME_VALUE, NUM_STRINGS(tp) + 1);
     const struct tinfo_fkeys *all_fkeys = _nc_tinfo_fkeys;
@@ -2388,7 +2524,7 @@ show_fkey_name(NAME_VALUE * data)
  * last one assigned).
  */
 static void
-check_conflict(TERMTYPE *tp)
+check_conflict(TERMTYPE2 *tp)
 {
     bool conflict = FALSE;
     unsigned j, k;
@@ -2398,16 +2534,23 @@ check_conflict(TERMTYPE *tp)
 	NAME_VALUE *given = get_fkey_list(tp);
 
 	if (check == 0)
-	    failed("check_termtype");
+	    failed("check_conflict");
 
 	for (j = 0; given[j].keycode; ++j) {
 	    const char *a = given[j].value;
 	    bool first = TRUE;
 
+	    if (!VALID_STRING(a))
+		continue;
+
 	    for (k = j + 1; given[k].keycode; k++) {
 		const char *b = given[k].value;
+
+		if (!VALID_STRING(b))
+		    continue;
 		if (check[k])
 		    continue;
+
 		if (!_nc_capcmp(a, b)) {
 		    check[j] = 1;
 		    check[k] = 1;
@@ -2430,6 +2573,67 @@ check_conflict(TERMTYPE *tp)
 	    if (!first)
 		fprintf(stderr, "\n");
 	}
+#if NCURSES_XNAMES
+	if (using_extensions) {
+	    /* *INDENT-OFF* */
+	    static struct {
+		const char *xcurses;
+		const char *shifted;
+	    } table[] = {
+		{ "kDC",  NULL },
+		{ "kDN",  "kind" },
+		{ "kEND", NULL },
+		{ "kHOM", NULL },
+		{ "kLFT", NULL },
+		{ "kNXT", NULL },
+		{ "kPRV", NULL },
+		{ "kRIT", NULL },
+		{ "kUP",  "kri" },
+		{ NULL,   NULL },
+	    };
+	    /* *INDENT-ON* */
+
+	    /*
+	     * SVr4 curses defines the "xcurses" names listed above except for
+	     * the special cases in the "shifted" column.  When using these
+	     * names for xterm's extensions, that was confusing, and resulted
+	     * in adding extended capabilities with "2" (shift) suffix.  This
+	     * check warns about unnecessary use of extensions for this quirk.
+	     */
+	    for (j = 0; given[j].keycode; ++j) {
+		const char *find = given[j].name;
+		int value;
+		char ch;
+
+		if (!VALID_STRING(given[j].value))
+		    continue;
+
+		for (k = 0; table[k].xcurses; ++k) {
+		    const char *test = table[k].xcurses;
+		    size_t size = strlen(test);
+
+		    if (!strncmp(find, test, size) && strcmp(find, test)) {
+			switch (sscanf(find + size, "%d%c", &value, &ch)) {
+			case 1:
+			    if (value == 2) {
+				_nc_warning("expected '%s' rather than '%s'",
+					    (table[k].shifted
+					     ? table[k].shifted
+					     : test), find);
+			    } else if (value < 2 || value > 15) {
+				_nc_warning("expected numeric 2..15 '%s'", find);
+			    }
+			    break;
+			default:
+			    _nc_warning("expected numeric suffix for '%s'", find);
+			    break;
+			}
+			break;
+		    }
+		}
+	    }
+	}
+#endif
 	free(given);
 	free(check);
     }
@@ -2484,7 +2688,7 @@ is_sgr_string(char *value)
  * Check if the given capability contains a given SGR attribute.
  */
 static void
-check_sgr_param(TERMTYPE *tp, int code, const char *name, char *value)
+check_sgr_param(TERMTYPE2 *tp, int code, const char *name, char *value)
 {
     if (VALID_STRING(value)) {
 	int ncv = ((code != 0) ? (1 << (code - 1)) : 0);
@@ -2533,7 +2737,7 @@ check_sgr_param(TERMTYPE *tp, int code, const char *name, char *value)
  * logic that reads a terminfo entry)
  */
 static void
-check_termtype(TERMTYPE *tp, bool literal)
+check_termtype(TERMTYPE2 *tp, bool literal)
 {
     unsigned j;
 
@@ -2542,8 +2746,17 @@ check_termtype(TERMTYPE *tp, bool literal)
     for_each_string(j, tp) {
 	char *a = tp->Strings[j];
 	if (VALID_STRING(a)) {
-	    check_params(tp, ExtStrname(tp, (int) j, strnames), a);
-	    check_delays(ExtStrname(tp, (int) j, strnames), a);
+	    const char *name = ExtStrname(tp, (int) j, strnames);
+	    /*
+	     * If we expect parameters, or if there might be parameters,
+	     * check for consistent number of parameters.
+	     */
+	    if (j >= SIZEOF(parametrized) ||
+		is_user_capability(name) > 0 ||
+		parametrized[j] > 0) {
+		check_params(tp, name, a, (j >= STRCOUNT));
+	    }
+	    check_delays(tp, ExtStrname(tp, (int) j, strnames), a);
 	    if (capdump) {
 		check_infotocap(tp, (int) j, a);
 	    }
@@ -2631,7 +2844,9 @@ check_termtype(TERMTYPE *tp, bool literal)
 		       _nc_visbuf(exit_attribute_mode)));
 	    }
 	}
+#if defined(exit_italics_mode)
 	CHECK_SGR0(exit_italics_mode);
+#endif
 	CHECK_SGR0(exit_standout_mode);
 	CHECK_SGR0(exit_underline_mode);
 	if (check_sgr0 != exit_attribute_mode) {

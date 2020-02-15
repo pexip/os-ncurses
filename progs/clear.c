@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -36,19 +36,72 @@
  * clear.c --  clears the terminal's screen
  */
 
-#define USE_LIBTINFO 1
+#define USE_LIBTINFO
 #include <clear_cmd.h>
+#include <tty_settings.h>
 
-MODULE_ID("$Id: clear.c,v 1.15 2016/10/23 00:36:36 tom Exp $")
+MODULE_ID("$Id: clear.c,v 1.22 2017/10/07 21:48:32 tom Exp $")
+
+const char *_nc_progname = "clear";
+
+static void
+usage(void)
+{
+#define KEEP(s) s "\n"
+    static const char msg[] =
+    {
+	KEEP("")
+	KEEP("Options:")
+	KEEP("  -T TERM     use this instead of $TERM")
+	KEEP("  -V          print curses-version")
+	KEEP("  -x          do not try to clear scrollback")
+    };
+#undef KEEP
+    (void) fprintf(stderr, "Usage: %s [options]\n", _nc_progname);
+    fputs(msg, stderr);
+    ExitProgram(EXIT_FAILURE);
+}
 
 int
 main(
 	int argc GCC_UNUSED,
 	char *argv[]GCC_UNUSED)
 {
-    setupterm((char *) 0, STDOUT_FILENO, (int *) 0);
+    TTY tty_settings;
+    int fd;
+    int c;
+    char *term;
+    bool opt_x = FALSE;		/* clear scrollback if possible */
 
-    ExitProgram((clear_cmd() == ERR)
+    _nc_progname = _nc_rootname(argv[0]);
+    term = getenv("TERM");
+
+    while ((c = getopt(argc, argv, "T:Vx")) != -1) {
+	switch (c) {
+	case 'T':
+	    use_env(FALSE);
+	    use_tioctl(TRUE);
+	    term = optarg;
+	    break;
+	case 'V':
+	    puts(curses_version());
+	    ExitProgram(EXIT_SUCCESS);
+	case 'x':		/* do not try to clear scrollback */
+	    opt_x = TRUE;
+	    break;
+	default:
+	    usage();
+	    /* NOTREACHED */
+	}
+    }
+    if (optind < argc)
+	usage();
+
+    fd = save_tty_settings(&tty_settings, FALSE);
+
+    setupterm(term, fd, (int *) 0);
+
+    ExitProgram((clear_cmd(opt_x) == ERR)
 		? EXIT_FAILURE
 		: EXIT_SUCCESS);
 }

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -36,7 +36,7 @@
  *****************************************************************************/
 
 /*
- * $Id: blue.c,v 1.46 2016/09/05 00:24:27 tom Exp $
+ * $Id: blue.c,v 1.51 2017/09/30 17:43:18 tom Exp $
  */
 
 #include <test.priv.h>
@@ -196,20 +196,24 @@ deal_cards(void)
 static void
 printcard(int value)
 {
-    (void) addch(' ');
+    AddCh(' ');
     if (value == NOCARD) {
 	(void) addstr("   ");
     } else {
 	int which = (value / SUIT_LENGTH);
 	int isuit = (value % SUIT_LENGTH);
-	attr_t color = (attr_t) COLOR_PAIR(((which % 2) == 0)
+	chtype color = (chtype) COLOR_PAIR(((which % 2) == 0)
 					   ? RED_ON_WHITE
 					   : BLACK_ON_WHITE);
 
-	addch(ranks[isuit][0] | (chtype) COLOR_PAIR(BLUE_ON_WHITE));
-	addch(ranks[isuit][1] | (chtype) COLOR_PAIR(BLUE_ON_WHITE));
+	AddCh(ranks[isuit][0] | (chtype) COLOR_PAIR(BLUE_ON_WHITE));
+	AddCh(ranks[isuit][1] | (chtype) COLOR_PAIR(BLUE_ON_WHITE));
 
-	attron(color);
+#ifdef NCURSES_VERSION
+	(attron) ((int) color);	/* quieter compiler warnings */
+#else
+	attron(color);		/* PDCurses, etc., either no macro or wrong */
+#endif
 #if USE_WIDEC_SUPPORT
 	{
 	    wchar_t values[2];
@@ -218,11 +222,15 @@ printcard(int value)
 	    addwstr(values);
 	}
 #else
-	addch((chtype) suits[which]);
+	AddCh(suits[which]);
 #endif
+#ifdef NCURSES_VERSION
+	(attroff) ((int) color);
+#else
 	attroff(color);
+#endif
     }
-    (void) addch(' ');
+    AddCh(' ');
 }
 
 static void
@@ -340,7 +348,7 @@ play_game(void)
 		    (void) addstr(buf);
 		    move(PROMPTROW, (int) strlen(buf));
 		    clrtoeol();
-		    (void) addch(' ');
+		    AddCh(' ');
 		} while
 		    (((c = (char) getch()) < 'a' || c > 'd')
 		     && (c != 'r')
@@ -459,13 +467,11 @@ use_pc_display(void)
 int
 main(int argc, char *argv[])
 {
-    CATCHALL(die);
-
     setlocale(LC_ALL, "");
 
     use_pc_display();
 
-    initscr();
+    InitAndCatch(initscr(), die);
 
     start_color();
     init_pair(RED_ON_WHITE, COLOR_RED, COLOR_WHITE);
