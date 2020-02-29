@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.               --
+-- Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.               --
 --                                                                           --
 -- Permission is hereby granted, free of charge, to any person obtaining a   --
 -- copy of this software and associated documentation files (the             --
@@ -25,7 +25,7 @@
 -- sale, use or other dealings in this Software without prior written        --
 -- authorization.                                                            --
 -------------------------------------------------------------------------------
--- $Id: INSTALL,v 1.194 2015/10/24 19:03:42 Tomas.Cech Exp $
+-- $Id: INSTALL,v 1.211 2018/09/08 23:28:11 tom Exp $
 ---------------------------------------------------------------------
              How to install Ncurses/Terminfo on your system
 ---------------------------------------------------------------------
@@ -317,10 +317,19 @@ SUMMARY OF CONFIGURE OPTIONS:
 	Do not install the terminal database.  This is used to omit features
 	for packages, as done with --without-progs.
 
+    --disable-echo
+	Use the option --disable-echo to make the build-log less verbose by
+	suppressing the display of the compile and link commands.  This makes
+	it easier to see the compiler warnings.  (You can always use "make -n"
+	to see the options that are used).
+
     --disable-ext-funcs
 	Disable function-extensions.  Configure ncurses without the functions
 	that are not specified by XSI.  See ncurses/modules for the exact
 	list of library modules that would be suppressed.
+
+    --disable-gnat-projects
+	Disable GNAT projects even if usable, for testing old makefile rules.
 
     --disable-hashmap
 	Compile without hashmap scrolling-optimization code.  This algorithm is
@@ -334,25 +343,6 @@ SUMMARY OF CONFIGURE OPTIONS:
 
     --disable-largefile
 	Disable compiler flags needed to use large-file interfaces.
-
-    --disable-lib-suffixes
-	Suppress the "w", "t" or "tw" suffixes which normally would be added
-	to the library names for the --enable-widec and --with-pthread options.
-
-    --disable-libtool-version
-	when using --with-libtool, control how the major/minor version numbers
-	are used for constructing the library name.
-
-	The default uses the -version-number feature of libtool, which makes
-	the library names compatible (though not identical) with the standard
-	build using --with-shared.
-
-	Use --disable-libtool-version to use the libtool -version-info feature.
-	This corresponds to the setting used before patch 20100515.
-
-	Starting with patch 20141115, using this option causes the configure
-	script to apply the top-level VERSION file to the ABI version used
-	for libtool.
 
     --disable-leaks
 	For testing, compile-in code that frees memory that normally would not
@@ -373,6 +363,25 @@ SUMMARY OF CONFIGURE OPTIONS:
 	unplanned) extension which frees memory in a manner that would let the
 	library resume and reallocate memory, then that would not use a "_nc_"
 	prefix.
+
+    --disable-lib-suffixes
+	Suppress the "w", "t" or "tw" suffixes which normally would be added
+	to the library names for the --enable-widec and --with-pthread options.
+
+    --disable-libtool-version
+	when using --with-libtool, control how the major/minor version numbers
+	are used for constructing the library name.
+
+	The default uses the -version-number feature of libtool, which makes
+	the library names compatible (though not identical) with the standard
+	build using --with-shared.
+
+	Use --disable-libtool-version to use the libtool -version-info feature.
+	This corresponds to the setting used before patch 20100515.
+
+	Starting with patch 20141115, using this option causes the configure
+	script to apply the top-level VERSION file to the ABI version used
+	for libtool.
 
     --disable-lp64
 	The header files will ignore use of the _LP64 symbol to make chtype
@@ -431,10 +440,18 @@ SUMMARY OF CONFIGURE OPTIONS:
 
     --disable-relink
 	If --enable-rpath is given, the generated makefiles normally will
-	rebuild the libraries during install.  Use this option to simply
-	copy whatever the linked produced.
+	rebuild shared libraries during install.  Use this option to simply
+	copy whatever the linker produced.
 
-	This option is ignored if --enable-rpath is not given.
+	Static libraries cannot simply be copied because tools use timestamps
+	to determine if the library's symbol table is up to date.  If your
+	install program supports the "-p" (preserve timestamp) option, that
+	is used when --disable-relink is given, to avoid rebuilding the symbol
+	table.
+
+	Finally, some tools ignore the subsecond timestamps supported by some
+	filesystems.  This option adds a 1-second sleep to help those tools
+	avoid unnecessary relinking during the install process.
 
     --disable-root-environ
 	Compile with environment restriction, so certain environment variables
@@ -451,6 +468,9 @@ SUMMARY OF CONFIGURE OPTIONS:
     --disable-scroll-hints
 	Compile without scroll-hints code.  This option is ignored when
 	hashmap scrolling is configured, which is the default.
+
+    --disable-stripping
+	Do not strip installed executables.
 
     --disable-tic-depends
 	When building shared libraries, normally the tic library is linked to
@@ -469,6 +489,26 @@ SUMMARY OF CONFIGURE OPTIONS:
 	Portable programs should call tparm() using the fixed-length parameter
 	list documented in X/Open.  ncurses provides varargs support for this
 	function.  Use --disable-tparm-varargs to disable this support.
+
+    --disable-wattr-macros
+	The 6.0 ABI adds support for extended colors and for extended mouse.
+	The former is a noticeable problem when developers inadvertantly
+	compile using the ncurses6 header files and link with an ncurses5
+	library, because the wattr* macros use a new field in the WINDOW
+	structure.  These macros are used in several applications.
+
+	Since ncurses provides an actual function for each of these macros,
+	suppressing them from the curses.h header allows the ncurses5 libraries
+	to be used in most applications.
+
+	NOTE: The extended colors also are used in the cchar_t structure, but
+	fewer applications use that.
+
+	NOTE: This workaround does not help with mismatches in the ncurses
+	mouse version.  The extended mouse feature uses one less fewer bit for
+	each button, so that only the first button will work as expected with
+	a mismatch between header and library.  Again, most applications will
+	work, since most use only the first button.
 
     --enable-assertions
 	For testing, compile-in assertion code.  This is used only for a few
@@ -515,12 +555,6 @@ SUMMARY OF CONFIGURE OPTIONS:
 	places where the XSI curses interface would not allow them.  Similar
 	issues arise when porting to SVr4 curses, which uses const in even
 	fewer places.
-
-    --enable-echo
-	Use the option --disable-echo to make the build-log less verbose by
-	suppressing the display of the compile and link commands.  This makes
-	it easier to see the compiler warnings.  (You can always use "make -n"
-	to see the options that are used).
 
     --enable-expanded
 	For testing, generate functions for certain macros to make them visible
@@ -597,6 +631,14 @@ SUMMARY OF CONFIGURE OPTIONS:
 	terminfo entries.  This is the default, unless you have disabled the
 	extended functions.
 
+    --enable-opaque-curses
+    --enable-opaque-form
+    --enable-opaque-menu
+    --enable-opaque-panel
+	Define symbol in curses.h which controls whether some library
+	structures are treated as "opaque".  The --enable-opaque-curses option
+	is overridden by the --enable-reentrant option.
+
     --enable-pc-files
 	If pkg-config is found (see --with-pkg-config), generate ".pc" files
 	for each of the libraries, and install them in pkg-config's library
@@ -607,9 +649,9 @@ SUMMARY OF CONFIGURE OPTIONS:
 	call can be interrupted for SIGWINCH.
 
     --enable-reentrant
-	Compile experimental configuration which improves reentrant use of the
-	library by reducing global and static variables.  This option is also
-	set if --with-pthread is used.
+	Compile configuration which improves reentrant use of the library by
+	reducing global and static variables.  This option is also set if
+	--with-pthread is used.
 
 	Enabling this option adds a "t" to the library names, except for the
 	special case when --enable-weak-symbols is also used.
@@ -633,14 +675,8 @@ SUMMARY OF CONFIGURE OPTIONS:
     --enable-safe-sprintf
 	Compile with experimental safe-sprintf code.  You may consider using
 	this if you are building ncurses for a system that has neither
-	vsnprintf() or vsprintf().  It is slow, however.
-
-    --enable-sigwinch
-	Compile support for ncurses' SIGWINCH handler.  If your application has
-	its own SIGWINCH handler, ncurses will not use its own.  The ncurses
-	handler causes wgetch() to return KEY_RESIZE when the screen-size
-	changes.  This option is the default, unless you have disabled the
-	extended functions.
+	vsnprintf() or vsprintf().  It is slow, however, and is used only on
+	very old systems which lack vsnprintf().
 
     --enable-signed-char
 	The term.h header declares a Booleans[] array typed "char".  But it
@@ -648,6 +684,13 @@ SUMMARY OF CONFIGURE OPTIONS:
 	Some packagers choose to alter the type of Booleans[] though this
 	is not strictly compatible.  This option allows one to implement this
 	alteration without patching the source code.
+
+    --enable-sigwinch
+	Compile support for ncurses' SIGWINCH handler.  If your application has
+	its own SIGWINCH handler, ncurses will not use its own.  The ncurses
+	handler causes wgetch() to return KEY_RESIZE when the screen-size
+	changes.  This option is the default, unless you have disabled the
+	extended functions.
 
     --enable-sp-funcs
 	Compile-in support for extended functions which accept a SCREEN pointer,
@@ -751,10 +794,6 @@ SUMMARY OF CONFIGURE OPTIONS:
 	correspond with that in <stdbool.h>, or defaults to platform-specific
 	sizes).
 
-    --with-build-cpp=XXX
-	This option is provided by the same macro used for $BUILD_CC, etc.,
-	but is not directly used by ncurses.
-
     --with-build-cc=XXX
 	If cross-compiling, specify a host C compiler, which is needed to
 	compile a few utilities which generate source modules for ncurses.
@@ -768,6 +807,10 @@ SUMMARY OF CONFIGURE OPTIONS:
 
 	You can also set the environment variable $BUILD_CFLAGS rather than
 	use this option.
+
+    --with-build-cpp=XXX
+	This option is provided by the same macro used for $BUILD_CC, etc.,
+	but is not directly used by ncurses.
 
     --with-build-cppflags=XXX
 	If cross-compiling, specify the host C preprocessor-flags.  You might
@@ -812,6 +855,10 @@ SUMMARY OF CONFIGURE OPTIONS:
 	Use this option if you need to preserve compatibility with 64-bit
 	executables, e.g., by setting "--with-chtype=long" (the configure
 	script supplies "unsigned").
+
+    --with-config-suffix=XXX
+	Specify a suffix for the ncursesw6-config file, etc., used to work
+	around conflicts with packages.
 
     --with-cxx-shared
 	When --with-shared is set, build libncurses++ as a shared library.
@@ -945,10 +992,14 @@ SUMMARY OF CONFIGURE OPTIONS:
 	macros for libtool, e.g., AC_PROG_LIBTOOL.  See the comments in
 	aclocal.m4 for CF_PROG_LIBTOOL, and ensure that you build configure
 	using the appropriate patch for autoconf from
-		http://invisible-island.net/autoconf/
+		https://invisible-island.net/autoconf/
 
     --with-libtool-opts=XXX
-	Specify additional libtool options.
+	Allow user to pass additional libtool options into the library creation
+	and link steps.  The main use for this is to do something like
+		./configure --with-libtool-opts=-static
+	to get the same behavior as automake-flavored
+		./configure --enable-static
 
     --with-manpage-aliases
 	Tell the configure script you wish to create entries in the
@@ -1013,6 +1064,15 @@ SUMMARY OF CONFIGURE OPTIONS:
 	If ".pc" files are installed, optionally add a suffix to the files
 	and corresponding package names to separate unusual configurations.
 	If no option value is given (or if it is "none"), no suffix is added.
+
+    --with-pcre2
+	Add PCRE2 (Perl-compatible regular expressions v2) to the build if it
+	is available and the user requests it.  Assume the application will
+	otherwise use the POSIX interface.
+
+	This is useful for MinGW builds because the usual POSIX interface is
+	not supplied by the development environment, while ncurses' form
+	library uses a regular expression feature for one of the field types.
 
     --with-pkg-config=[DIR]
 	Check for pkg-config, optionally specifying its path.
@@ -1141,6 +1201,10 @@ SUMMARY OF CONFIGURE OPTIONS:
 	Configure the trace() function as part of the all models of the ncurses
 	library.  Normally it is part of the debug (libncurses_g) library only.
 
+    --with-valgrind
+	For testing, compile with debug option.
+	This also sets the --disable-leaks option.
+
     --with-versioned-syms[=XXX]
 	The Solaris, GNU and reportedly some other linkers (ld) accept a
 	"--version-script" option which tells the linker to annotate the
@@ -1165,24 +1229,12 @@ SUMMARY OF CONFIGURE OPTIONS:
 	scripts which build several configurations for each release version,
 	checking to see which of the "_nc_" symbols can be made local.  In
 	addition to the ncurses libraries and programs, the symbols used
-	by the "tack" program are made global.
+	by the "tack" program before version 1.08 are made global.
 
 	These sample ".map" files will not cover all possible combinations.
 	In some cases, e.g., when using the --with-weak-symbols option, you
 	may prefer to use a different ".map" file by setting this option's
 	value.
-
-    --with-xterm-kbs=XXX
-	Configure xterm's terminfo entries to use either BS (^H, i.e., ASCII
-	backspace) or DEL (^?, or 127).  XXX can be BS (or bs, 8) or DEL
-	(or del, 127).
-
-	During installation, the makefile and scripts modifies the "xterm+kbs"
-	terminfo entry to use this setting.
-
-    --with-valgrind
-	For testing, compile with debug option.
-	This also sets the --disable-leaks option.
 
     --with-wrap-prefix=XXX
 	When using the --enable-reentrant option, ncurses redefines variables
@@ -1194,6 +1246,19 @@ SUMMARY OF CONFIGURE OPTIONS:
 	line of reasoning, it is not the same type of "private" as functions
 	which applications should not call even via a macro.  This configure
 	option lets you choose the prefix for these wrapped variables.
+
+    --with-x11-rgb=FILE
+	Provide a pathname for the X11 rgb file, used by the picsmap program.
+	This overrides a configure check which usually works, but is needed
+	due to the lack of standardization for X11's files.
+
+    --with-xterm-kbs=XXX
+	Configure xterm's terminfo entries to use either BS (^H, i.e., ASCII
+	backspace) or DEL (^?, or 127).  XXX can be BS (or bs, 8) or DEL
+	(or del, 127).
+
+	During installation, the makefile and scripts modifies the "xterm+kbs"
+	terminfo entry to use this setting.
 
     --without-ada
 	Suppress the configure script's check for Ada95, do not build the
@@ -1234,6 +1299,11 @@ SUMMARY OF CONFIGURE OPTIONS:
 	programs (e.g., tic).  The test applications will still be built if you
 	type "make", though not if you simply do "make install".
 
+    --without-tack
+	Suppress build/install with tack program, if it happens to be
+	in the same build-tree (tack was moved out of the ncurses source-tree
+	in 20070203).
+
     --without-tests
 	Tell the configure script to suppress the build of ncurses' test
 	programs.
@@ -1247,10 +1317,10 @@ SUMMARY OF CONFIGURE OPTIONS:
 COMPATIBILITY WITH OLDER VERSIONS OF NCURSES:
 --------------------------------------------
 
-    Because ncurses implements X/Open Curses, its interface is fairly stable. 
+    Because ncurses implements X/Open Curses, its interface is fairly stable.
     That does not mean the interface does not change.  Changes are made to the
     documented interfaces when we find differences between ncurses and X/Open
-    or implementations which largely correspond to X/Open (such as Solaris). 
+    or implementations which largely correspond to X/Open (such as Solaris).
     We add extensions to those interfaces to solve problems not addressed by
     the original curses design, but those must not conflict with the X/Open
     documentation.
@@ -1258,6 +1328,91 @@ COMPATIBILITY WITH OLDER VERSIONS OF NCURSES:
     Here are some of the major interface changes, and related problems which
     you may encounter when building a system with different versions of
     ncurses:
+
+    6.1 (Jan 27, 2018)
+	Interface changes:
+
+	+ X/Open Curses specifies a "reserved" void* parameter in several
+	  functions, saying that it must be NULL.  In this release, if the
+	  parameter is non-NULL, it is interpreted as a point to an integer
+	  containing a color pair.  In previous releases, a non-NULL parameter
+	  caused an error return.  Portable applications are unaffected.  Here
+	  are the functions which have been extended:
+		attr_get
+		attr_off
+		attr_on
+		attr_set
+		chgat
+		color_set
+		mvchgat
+		mvwchgat
+		slk_attr_off
+		slk_attr_on
+		slk_attr_set
+		wattr_get
+		wattr_on
+		wattr_off
+		wattr_set
+		wchgat
+		wcolor_set
+
+	+ the TERMINAL structure declared in <term.h> has been made opaque,
+	  and its size increased to handle the increased size of color pair
+	  and color value, as well as other numeric capabilities.
+
+	  A few applications required change, e.g., to use def_prog_mode;
+	  only one application (tack) is known to have a valid reason for
+	  accessing these internal details, and that was addressed by the
+	  release of tack 1.08 in 2017.  Internal functions marked as used
+	  by tack will be deprecated in future releases.
+
+	Added extensions:
+
+	+ Several new functions were added to manipulate extended color pairs
+	  and color values.  These include:
+		alloc_pair
+		extended_color_content
+		extended_pair_content
+		extended_slk_color
+		find_pair
+		free_pair
+		init_extended_color
+		init_extended_pair
+		reset_color_pairs
+
+	  as well as corresponding sp-functions.
+
+	+ A new terminfo capability "RGB" tells the ncurses library that the
+	  color values are red/green/blue, to eliminate the need for palettes
+	  in that special case for the color_content function.
+
+	Added internal functions (other than "_sp" variants):
+		_nc_copy_termtype2
+		_nc_export_termtype2
+		_nc_fallback2
+		_nc_find_prescr
+		_nc_forget_prescr
+		_nc_free_termtype2
+		_nc_read_entry2
+		_nc_write_object
+
+	Removed internal functions:
+		_nc_check_termtype
+		_nc_resolve_uses
+
+	Modified internal functions:
+
+	+ symbols are used by tic/infocmp/toe:
+		_nc_align_termtype - change parameters to TERMTYPE2*
+		_nc_check_termtype2 - change parameter to TERMTYPE2*
+		_nc_read_file_entry - change parameter to TERMTYPE2*
+		_nc_read_termtype - change parameter to TERMTYPE2*
+		_nc_trim_sgr0 - change parameter to TERMTYPE2*
+		_nc_write_entry - change parameter to TERMTYPE2*
+
+	+ symbols used only within the library:
+		_nc_fallback - change return type to TERMTYPE2*
+		_nc_init_termtype - change parameter to TERMTYPE2*
 
     6.0 (Aug 08, 2015)
 	Interface changes:
@@ -2079,7 +2234,7 @@ USING NCURSES WITH GPM:
 	but the linker may not cooperate, producing mysterious errors.
 	See the FAQ, as well as the discussion under the --with-gpm option:
 
-	http://invisible-island.net/ncurses/ncurses.faq.html#using_gpm_lib
+	https://invisible-island.net/ncurses/ncurses.faq.html#using_gpm_lib
 
 BUILDING NCURSES WITH A CROSS-COMPILER
 	Ncurses can be built with a cross-compiler.  Some parts must be built

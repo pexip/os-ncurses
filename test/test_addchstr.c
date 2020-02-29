@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2009-2012,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 2009-2016,2017 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,16 +26,18 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: test_addchstr.c,v 1.19 2016/09/10 21:29:04 tom Exp $
+ * $Id: test_addchstr.c,v 1.24 2017/09/28 23:10:29 tom Exp $
  *
  * Demonstrate the waddchstr() and waddch functions.
  * Thomas Dickey - 2009/9/12
  */
 
 #include <test.priv.h>
-
 #include <linedata.h>
 
+/*
+ * redefinitions to simplify comparison between test_*str programs
+ */
 #undef MvAddStr
 #undef MvWAddStr
 
@@ -47,9 +49,6 @@
 #define MvWAddStr  (void) mvwaddchstr
 #define WAddNStr   waddchnstr
 #define WAddStr    waddchstr
-
-#define AddCh      addch
-#define WAddCh     waddch
 
 #define MY_TABSIZE 8
 
@@ -65,7 +64,7 @@ static bool pass_ctls = FALSE;
 static bool w_opt = FALSE;
 static int n_opt = -1;
 
-static attr_t show_attr;
+static chtype show_attr;
 static chtype *temp_buffer;
 static size_t temp_length;
 
@@ -207,7 +206,7 @@ ColOf(char *buffer, int length, int margin)
 
 #define LEN(n) ((length - (n) > n_opt) ? n_opt : (length - (n)))
 static void
-test_adds(int level)
+recursive_test(int level)
 {
     static bool first = TRUE;
 
@@ -283,7 +282,7 @@ test_adds(int level)
     doupdate();
 
     if (has_colors()) {
-	show_attr = (attr_t) COLOR_PAIR(1);
+	show_attr = (chtype) COLOR_PAIR(1);
 	wbkgdset(work, show_attr | ' ');
     } else {
 	show_attr = A_STANDOUT;
@@ -293,7 +292,7 @@ test_adds(int level)
 	wmove(work, row, margin + 1);
 	switch (ch) {
 	case key_RECUR:
-	    test_adds(level + 1);
+	    recursive_test(level + 1);
 
 	    if (look)
 		touchwin(look);
@@ -513,7 +512,10 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
     if (optind < argc)
 	usage();
 
-    test_adds(0);
+    recursive_test(0);
     endwin();
+#if NO_LEAKS
+    free(temp_buffer);
+#endif
     ExitProgram(EXIT_SUCCESS);
 }

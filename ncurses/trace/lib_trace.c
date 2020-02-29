@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -47,7 +47,7 @@
 
 #include <ctype.h>
 
-MODULE_ID("$Id: lib_trace.c,v 1.84 2016/11/27 02:35:17 tom Exp $")
+MODULE_ID("$Id: lib_trace.c,v 1.87 2018/06/24 00:06:37 tom Exp $")
 
 NCURSES_EXPORT_VAR(unsigned) _nc_tracing = 0; /* always define this */
 
@@ -87,6 +87,7 @@ NCURSES_EXPORT_VAR(long) _nc_outchars = 0;
 
 #define MyFP		_nc_globals.trace_fp
 #define MyFD		_nc_globals.trace_fd
+#define MyInit		_nc_globals.trace_opened
 #define MyPath		_nc_globals.trace_fname
 #define MyLevel		_nc_globals.trace_level
 #define MyNested	_nc_globals.nested_tracef
@@ -95,6 +96,7 @@ NCURSES_EXPORT(void)
 trace(const unsigned int tracelevel)
 {
     if ((MyFP == 0) && tracelevel) {
+	MyInit = TRUE;
 	if (MyFD >= 0) {
 	    MyFP = fdopen(MyFD, "wb");
 	} else {
@@ -156,6 +158,13 @@ _nc_va_tracef(const char *fmt, va_list ap)
     bool after = FALSE;
     unsigned doit = _nc_tracing;
     int save_err = errno;
+    FILE *fp = MyFP;
+
+#ifdef TRACE
+    /* verbose-trace in the command-line utilities relies on this */
+    if (fp == 0 && !MyInit && _nc_tracing >= DEBUG_LEVEL(1))
+	fp = stderr;
+#endif
 
     if (strlen(fmt) >= sizeof(Called) - 1) {
 	if (!strncmp(fmt, Called, sizeof(Called) - 1)) {
@@ -173,7 +182,7 @@ _nc_va_tracef(const char *fmt, va_list ap)
 	}
     }
 
-    if (doit != 0 && MyFP != 0) {
+    if (doit != 0 && fp != 0) {
 #ifdef USE_PTHREADS
 	/*
 	 * TRACE_ICALLS is "really" needed to show normal use with threaded
@@ -187,20 +196,20 @@ _nc_va_tracef(const char *fmt, va_list ap)
 # if USE_WEAK_SYMBOLS
 	if ((pthread_self))
 # endif
-#ifdef __MINGW32__
-	    fprintf(MyFP, "%#lx:", (long) (intptr_t) pthread_self().p);
+#ifdef _WIN32
+	    fprintf(fp, "%#lx:", (long) (intptr_t) pthread_self().p);
 #else
-	    fprintf(MyFP, "%#lx:", (long) (intptr_t) pthread_self());
+	    fprintf(fp, "%#lx:", (long) (intptr_t) pthread_self());
 #endif
 #endif
 	if (before || after) {
 	    int n;
 	    for (n = 1; n < MyLevel; n++)
-		fputs("+ ", MyFP);
+		fputs("+ ", fp);
 	}
-	vfprintf(MyFP, fmt, ap);
-	fputc('\n', MyFP);
-	fflush(MyFP);
+	vfprintf(fp, fmt, ap);
+	fputc('\n', fp);
+	fflush(fp);
     }
 
     if (after && MyLevel)

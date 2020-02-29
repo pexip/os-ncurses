@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -40,7 +40,7 @@
 
 #include <curses.priv.h>
 
-#ifdef __MINGW32__
+#ifdef _WIN32
 #include <tchar.h>
 #else
 #include <windows.h>
@@ -52,9 +52,9 @@
 #define PSAPI_VERSION 2
 #include <psapi.h>
 
-#define CUR my_term.type.
+#define CUR TerminalType(my_term).
 
-MODULE_ID("$Id: win_driver.c,v 1.56 2016/09/17 22:02:44 tom Exp $")
+MODULE_ID("$Id: win_driver.c,v 1.61 2018/06/23 21:35:06 tom Exp $")
 
 #ifndef __GNUC__
 #  error We need GCC to compile for MinGW
@@ -494,7 +494,7 @@ wcon_doupdate(TERMINAL_CONTROL_BLOCK * TCB)
 	   CurScreen(sp)->_clear,
 	   NewScreen(sp)->_clear));
 
-	if (SP_PARM->_endwin) {
+	if (SP_PARM->_endwin == ewSuspend) {
 
 	    T(("coming back from shell mode"));
 	    NCURSES_SP_NAME(reset_prog_mode) (NCURSES_SP_ARG);
@@ -503,7 +503,7 @@ wcon_doupdate(TERMINAL_CONTROL_BLOCK * TCB)
 	    NCURSES_SP_NAME(_nc_screen_resume) (NCURSES_SP_ARG);
 	    SP_PARM->_mouse_resume(SP_PARM);
 
-	    SP_PARM->_endwin = FALSE;
+	    SP_PARM->_endwin = ewRunning;
 	}
 
 	if ((CurScreen(sp)->_clear || NewScreen(sp)->_clear)) {
@@ -648,8 +648,11 @@ wcon_CanHandle(TERMINAL_CONTROL_BLOCK * TCB,
      * This is intentional, to avoid unnecessary breakage of applications
      * using <term.h> symbols.
      */
-    if (code && (TCB->term.type.Booleans == 0)) {
-	_nc_init_termtype(&(TCB->term.type));
+    if (code && (TerminalType(&TCB->term).Booleans == 0)) {
+	_nc_init_termtype(&TerminalType(&TCB->term));
+#if NCURSES_EXT_NUMBERS
+	_nc_export_termtype2(&TCB->term.type, &TerminalType(&TCB->term));
+#endif
     }
 
     if (!code) {
@@ -1313,7 +1316,9 @@ wcon_initmouse(TERMINAL_CONTROL_BLOCK * TCB)
 }
 
 static int
-wcon_testmouse(TERMINAL_CONTROL_BLOCK * TCB, int delay)
+wcon_testmouse(TERMINAL_CONTROL_BLOCK * TCB,
+	       int delay
+	       EVENTLIST_2nd(_nc_eventlist * evl))
 {
     int rc = 0;
     SCREEN *sp;
@@ -1525,6 +1530,10 @@ console_twait(
     int diff;
     bool isImmed = (milliseconds == 0);
 
+#ifdef NCURSES_WGETCH_EVENTS
+    (void) evl;			/* TODO: implement wgetch-events */
+#endif
+
 #define CONSUME() ReadConsoleInput(fd,&inp_rec,1,&nRead)
 
     assert(sp);
@@ -1632,7 +1641,7 @@ wcon_twait(TERMINAL_CONTROL_BLOCK * TCB,
 			     CON.inp,
 			     mode,
 			     milliseconds,
-			     timeleft EVENTLIST_2nd(_nc_eventlist * evl));
+			     timeleft EVENTLIST_2nd(evl));
     }
     return code;
 }
@@ -2066,7 +2075,8 @@ int
 _nc_mingw_testmouse(
 		       SCREEN *sp,
 		       HANDLE fd,
-		       int delay)
+		       int delay
+		       EVENTLIST_2nd(_nc_eventlist * evl))
 {
     int rc = 0;
 

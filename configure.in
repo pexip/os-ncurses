@@ -1,5 +1,5 @@
 dnl***************************************************************************
-dnl Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+dnl Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
 dnl                                                                          *
 dnl Permission is hereby granted, free of charge, to any person obtaining a  *
 dnl copy of this software and associated documentation files (the            *
@@ -28,14 +28,14 @@ dnl***************************************************************************
 dnl
 dnl Author: Thomas E. Dickey 1995-on
 dnl
-dnl $Id: configure.in,v 1.631 2016/06/04 22:47:54 tom Exp $
+dnl $Id: configure.in,v 1.666 2018/10/13 19:32:11 tom Exp $
 dnl Process this file with autoconf to produce a configure script.
 dnl
-dnl See http://invisible-island.net/autoconf/ for additional information.
+dnl See https://invisible-island.net/autoconf/ for additional information.
 dnl
 dnl ---------------------------------------------------------------------------
-AC_PREREQ(2.52.20030208)
-AC_REVISION($Revision: 1.631 $)
+AC_PREREQ(2.52.20170501)
+AC_REVISION($Revision: 1.666 $)
 AC_INIT(ncurses/base/lib_initscr.c)
 AC_CONFIG_HEADER(include/ncurses_cfg.h:include/ncurses_cfg.hin)
 
@@ -178,6 +178,22 @@ AC_ARG_WITH(progs,
 	[cf_with_progs=yes])
 AC_MSG_RESULT($cf_with_progs)
 
+if test -f $srcdir/tack/tack.h; then
+	if test "x$cross_compiling" = xyes ; then
+		CF_VERBOSE(ignoring tack because we are cross-compiling)
+		cf_with_tack=no
+	else
+		AC_MSG_CHECKING(if you want to build the tack program)
+		AC_ARG_WITH(tack,
+			[  --without-tack          suppress build/install with tack program],
+			[cf_with_tack=$withval],
+			[cf_with_tack=$cf_with_progs])
+		AC_MSG_RESULT($cf_with_tack)
+	fi
+else
+	cf_with_tack=no
+fi
+
 AC_MSG_CHECKING(if you want to build test-programs)
 AC_ARG_WITH(tests,
 	[  --without-tests         suppress build/install with test-programs],
@@ -193,9 +209,8 @@ AC_ARG_WITH(curses-h,
 AC_MSG_RESULT($with_curses_h)
 
 modules_to_build="ncurses"
-if test "X$cf_with_progs" != Xno ; then
-modules_to_build="$modules_to_build progs tack"
-fi
+test "X$cf_with_progs" != Xno && modules_to_build="$modules_to_build progs"
+test "X$cf_with_tack"  != Xno && modules_to_build="$modules_to_build tack"
 modules_to_build="$modules_to_build panel menu form"
 
 AC_ARG_PROGRAM
@@ -208,7 +223,21 @@ CF_PROG_LN_S
 
 AC_SYS_LONG_FILE_NAMES
 
-# if we find pkg-config, check if we should install the ".pc" files.
+# Provide for renaming "ncurses5-config" to "ncurses5X-config", etc., in case
+# of package conflict.
+cf_config_suffix=
+AC_ARG_WITH(config-suffix,
+	[  --with-config-suffix=X  suffixes ncursesXX-config file],
+	[case "x$withval" in
+	(xyes|xno)
+		AC_MSG_WARN(expected a value for config-suffix option)
+		;;
+	(*)	cf_config_suffix="$withval"
+		;;
+	esac])
+AC_SUBST(cf_config_suffix)
+
+# If we find pkg-config, check if we should install the ".pc" files.
 CF_PKG_CONFIG
 CF_WITH_PKG_CONFIG_LIBDIR
 CF_ENABLE_PC_FILES
@@ -394,36 +423,6 @@ AC_ARG_WITH(ticlib,
 	[with_ticlib=no])
 AC_MSG_RESULT($with_ticlib)
 
-### Checks for special libraries, must be done up-front.
-SHLIB_LIST=""
-CF_WITH_GPM
-if test "$with_gpm" != no ; then
-	AC_MSG_CHECKING(if you want to load GPM dynamically)
-	AC_ARG_WITH(dlsym,
-		[  --without-dlsym         do not use dlsym() to load GPM dynamically],
-		[with_dlsym=$withval],
-		[with_dlsym=yes])
-	AC_MSG_RESULT($with_dlsym)
-	if test "x$with_dlsym" = xyes ; then
-		CF_FUNC_DLSYM
-		if test "x$with_gpm" != xyes ; then
-			CF_VERBOSE(assuming soname for gpm is $with_gpm)
-			cf_cv_gpm_soname="$with_gpm"
-		else
-			CF_LIB_SONAME([#include <gpm.h>],[if (Gpm_Open(0,0)) Gpm_Close();],gpm)
-		fi
-		test "$cf_cv_gpm_soname" != "unknown" && AC_DEFINE_UNQUOTED(LIBGPM_SONAME,"$cf_cv_gpm_soname",[Define as needed to set the gpm share library soname])
-		SHLIB_LIST="-ldl $SHLIB_LIST"
-	else
-		SHLIB_LIST="-lgpm $SHLIB_LIST"
-		CF_ADD_LIB(gpm,TEST_LIBS)
-	fi
-	AC_DEFINE(HAVE_LIBGPM,1,[Define to 1 if we have the gpm library])
-	CF_CHECK_GPM_WGETCH
-fi
-
-CF_WITH_SYSMOUSE
-
 dnl Not all ports of gcc support the -g option
 
 if test X"$CC_G_OPT" = X"" ; then
@@ -492,6 +491,39 @@ for model in $cf_list_models; do
 	esac
 done
 
+### Checks for special libraries, must be done up-front.
+SHLIB_LIST=""
+CF_WITH_GPM
+if test "$with_gpm" != no ; then
+	AC_MSG_CHECKING(if you want to load GPM dynamically)
+	AC_ARG_WITH(dlsym,
+		[  --without-dlsym         do not use dlsym() to load GPM dynamically],
+		[with_dlsym=$withval],
+		[with_dlsym=yes])
+	AC_MSG_RESULT($with_dlsym)
+	if test "x$with_dlsym" = xyes ; then
+		CF_FUNC_DLSYM
+		if test "x$with_gpm" != xyes ; then
+			CF_VERBOSE(assuming soname for gpm is $with_gpm)
+			cf_cv_gpm_soname="$with_gpm"
+		else
+			CF_LIB_SONAME([#include <gpm.h>],[if (Gpm_Open(0,0)) Gpm_Close();],gpm)
+		fi
+		test "$cf_cv_gpm_soname" != "unknown" && AC_DEFINE_UNQUOTED(LIBGPM_SONAME,"$cf_cv_gpm_soname",[Define as needed to set the gpm share library soname])
+		SHLIB_LIST="-ldl $SHLIB_LIST"
+		CF_ADD_LIB(dl,PRIVATE_LIBS)
+	else
+		SHLIB_LIST="-lgpm $SHLIB_LIST"
+		CF_ADD_LIB(gpm,TEST_LIBS)
+		CF_ADD_LIB(gpm,PRIVATE_LIBS)
+	fi
+	AC_DEFINE(HAVE_LIBGPM,1,[Define to 1 if we have the gpm library])
+	CF_CHECK_GPM_WGETCH
+fi
+
+CF_WITH_PCRE2
+CF_WITH_SYSMOUSE
+
 # pretend that ncurses==ncursesw==ncursest
 AC_MSG_CHECKING(if you want to disable library suffixes)
 CF_ARG_DISABLE(lib-suffixes,
@@ -502,7 +534,7 @@ CF_ARG_DISABLE(lib-suffixes,
 AC_MSG_RESULT($disable_lib_suffixes)
 
 ### If we're building with rpath, try to link non-standard libs that way too.
-if test "$DFT_LWR_MODEL" = "shared"; then
+if test "$DFT_LWR_MODEL" = "shared" && test "x$cf_cv_enable_rpath" != xno; then
 	CF_DISABLE_RPATH_HACK
 fi
 
@@ -824,7 +856,7 @@ NCURSES_WINT_T=0
 
 # Check to define _XOPEN_SOURCE "automatically"
 CPPFLAGS_before_XOPEN="$CPPFLAGS"
-CF_XOPEN_SOURCE(500)
+CF_XOPEN_SOURCE(600)
 CPPFLAGS_after_XOPEN="$CPPFLAGS"
 
 # Work around breakage on OS X
@@ -926,6 +958,23 @@ else
 	with_tic_depends=no
 fi
 
+###   use option --disable-wattr-macros to suppress wattr* macros from curses.h
+AC_MSG_CHECKING(if you want to suppress wattr* macros to help with ncurses5/ncurses6 transition)
+AC_ARG_ENABLE(wattr-macros,
+	[  --disable-wattr-macros  suppress wattr* macros to help with ncurses5/ncurses6 transition],
+	[with_wattr_macros=$enableval],
+	[with_wattr_macros=yes])
+if [[ "x$with_wattr_macros" != xyes ]]; then
+	NCURSES_WATTR_MACROS=0
+	AC_MSG_RESULT(yes)
+else
+	NCURSES_WATTR_MACROS=1
+	AC_MSG_RESULT(no)
+fi
+AC_SUBST(NCURSES_WATTR_MACROS)
+
+CF_WITH_X11_RGB
+
 ###   use option --with-bool to override bool's type
 AC_MSG_CHECKING(for type of bool)
 AC_ARG_WITH(bool,
@@ -978,6 +1027,21 @@ AC_ARG_WITH(ccharw-max,
 AC_MSG_RESULT($NCURSES_CCHARW_MAX)
 AC_SUBST(NCURSES_CCHARW_MAX)
 
+AC_CHECK_SIZEOF([signed char], 0)
+if test "$ac_cv_sizeof_signed_char" = 1 ; then
+	NCURSES_SBOOL="signed char"
+else
+	NCURSES_SBOOL="char"
+fi
+AC_MSG_CHECKING(if you want to use signed Boolean array in term.h)
+AC_ARG_ENABLE(signed-char,
+	[  --enable-signed-char    compile using signed Boolean's in term.h],
+	[with_signed_char=$enableval],
+	[with_signed_char=no])
+AC_MSG_RESULT($with_signed_char)
+test "x$with_signed_char" != xyes && NCURSES_SBOOL="char"
+AC_SUBST(NCURSES_SBOOL)
+
 ###   use option --with-tparm-arg to override tparm's argument type
 AC_MSG_CHECKING(for type of tparm args)
 AC_ARG_WITH(tparm-arg,
@@ -1011,19 +1075,20 @@ AC_ARG_ENABLE(ext-funcs,
 AC_MSG_RESULT($with_ext_funcs)
 if test "x$with_ext_funcs" = xyes ; then
 	NCURSES_EXT_FUNCS=1
-	AC_DEFINE(HAVE_ASSUME_DEFAULT_COLORS,1,[Define to 1 to enable assume_default_colors() function])
-	AC_DEFINE(HAVE_CURSES_VERSION,1,[Define to 1 to enable curses_version() function])
-	AC_DEFINE(HAVE_HAS_KEY,1,[Define to 1 to enable has_key() function])
-	AC_DEFINE(HAVE_RESIZETERM,1,[Define to 1 to enable resizeterm() function])
-	AC_DEFINE(HAVE_RESIZE_TERM,1,[Define to 1 to enable resize_term() function])
-	AC_DEFINE(HAVE_TERM_ENTRY_H,1,[Define to 1 to enable term_entry() function])
-	AC_DEFINE(HAVE_USE_DEFAULT_COLORS,1,[Define to 1 to enable use_default_colors() function])
-	AC_DEFINE(HAVE_USE_EXTENDED_NAMES,1,[Define to 1 to enable use_extended_names() function])
-	AC_DEFINE(HAVE_USE_SCREEN,1,[Define to 1 to enable use_screen() function])
-	AC_DEFINE(HAVE_USE_WINDOW,1,[Define to 1 to enable use_window() function])
-	AC_DEFINE(HAVE_WRESIZE,1,[Define to 1 to enable wresize() function])
 	AC_DEFINE(NCURSES_EXT_FUNCS,1,[Define to 1 to enable ncurses extended functions])
+	AC_DEFINE(HAVE_ASSUME_DEFAULT_COLORS,1,[Define to 1 to enable assume_default_colors() function in test-programs])
+	AC_DEFINE(HAVE_CURSES_VERSION,1,[Define to 1 to enable curses_version() function in test-programs])
+	AC_DEFINE(HAVE_HAS_KEY,1,[Define to 1 to enable has_key() function in test-programs])
+	AC_DEFINE(HAVE_RESIZETERM,1,[Define to 1 to enable resizeterm() function in test-programs])
+	AC_DEFINE(HAVE_RESIZE_TERM,1,[Define to 1 to enable resize_term() function in test-programs])
+	AC_DEFINE(HAVE_TERM_ENTRY_H,1,[Define to 1 to enable term_entry() function in test-programs])
+	AC_DEFINE(HAVE_USE_DEFAULT_COLORS,1,[Define to 1 to enable use_default_colors() function in test-programs])
+	AC_DEFINE(HAVE_USE_EXTENDED_NAMES,1,[Define to 1 to enable use_extended_names() function in test-programs])
+	AC_DEFINE(HAVE_USE_SCREEN,1,[Define to 1 to enable use_screen() function in test-programs])
+	AC_DEFINE(HAVE_USE_WINDOW,1,[Define to 1 to enable use_window() function in test-programs])
+	AC_DEFINE(HAVE_WRESIZE,1,[Define to 1 to enable wresize() function in test-programs])
 	GENERATED_EXT_FUNCS=generated
+	test "x$with_ext_funcs" = xyes || cf_dft_ext_spfuncs=no
 else
 	NCURSES_EXT_FUNCS=0
 	GENERATED_EXT_FUNCS=
@@ -1040,6 +1105,7 @@ AC_MSG_RESULT($with_sp_funcs)
 if test "x$with_sp_funcs" = xyes ; then
 	NCURSES_SP_FUNCS=1
 	AC_DEFINE(NCURSES_SP_FUNCS,1,[Define to 1 to enable SCREEN-extensions])
+	AC_DEFINE(HAVE_TPUTS_SP,1,[Define to 1 to enable tputs_sp() function in test-programs])
 	GENERATED_SP_FUNCS=generated
 else
 	NCURSES_SP_FUNCS=0
@@ -1093,6 +1159,9 @@ if test "x$with_ext_colors" = xyes ; then
 		CF_NCURSES_ABI_6
 		NCURSES_EXT_COLORS=1
 		AC_DEFINE(NCURSES_EXT_COLORS,1,[Define to 1 to compile for 256-color support])
+		AC_DEFINE(HAVE_ALLOC_PAIR,1,[Define to 1 to enable alloc_pair() function])
+		AC_DEFINE(HAVE_INIT_EXTENDED_COLOR,1,[Define to 1 to enable init_extended_color() function in test-programs])
+		AC_DEFINE(HAVE_RESET_COLOR_PAIRS,1,[Define to 1 to enable reset_color_pairs() function in test-programs])
 	fi
 fi
 AC_SUBST(NCURSES_EXT_COLORS)
@@ -1130,21 +1199,6 @@ AC_ARG_ENABLE(no-padding,
 AC_MSG_RESULT($with_no_padding)
 test "x$with_no_padding" = xyes && AC_DEFINE(NCURSES_NO_PADDING,1,[Define to 1 to compile with $NCURSES_NO_PADDING code])
 
-AC_CHECK_SIZEOF([signed char], 0)
-if test "$ac_cv_sizeof_signed_char" = 1 ; then
-	NCURSES_SBOOL="signed char"
-else
-	NCURSES_SBOOL="char"
-fi
-AC_MSG_CHECKING(if you want to use signed Boolean array in term.h)
-AC_ARG_ENABLE(signed-char,
-	[  --enable-signed-char    compile using signed Boolean's in term.h],
-	[with_signed_char=$enableval],
-	[with_signed_char=no])
-AC_MSG_RESULT($with_signed_char)
-test "x$with_signed_char" != xyes && NCURSES_SBOOL="char"
-AC_SUBST(NCURSES_SBOOL)
-
 ###   use option --enable-sigwinch to turn on use of SIGWINCH logic
 AC_MSG_CHECKING(if you want SIGWINCH handler)
 AC_ARG_ENABLE(sigwinch,
@@ -1164,6 +1218,155 @@ AC_MSG_RESULT($with_tcap_names)
 NCURSES_XNAMES=0
 test "x$with_tcap_names" = xyes && NCURSES_XNAMES=1
 AC_SUBST(NCURSES_XNAMES)
+
+##############################################################################
+CF_HELP_MESSAGE(Reentrant Code:)
+CF_WITH_PTHREAD
+
+if test "x$with_pthread" != xno; then
+	AC_CHECK_FUNC(pthread_kill,[
+		AC_MSG_CHECKING(if you want to allow EINTR in wgetch with pthreads)
+		AC_ARG_ENABLE(pthreads-eintr,
+			[  --enable-pthreads-eintr enable EINTR in wgetch with pthreads],
+			[use_pthreads_eintr=$enableval],
+			[use_pthreads_eintr=no])
+		AC_MSG_RESULT($use_pthreads_eintr)
+		if test "x$use_pthreads_eintr" = xyes ; then
+			AC_DEFINE(USE_PTHREADS_EINTR,1,[Define to 1 to enable EINTR in wgetch with pthreads])
+		fi])
+
+	AC_MSG_CHECKING(if you want to use weak-symbols for pthreads)
+	AC_ARG_ENABLE(weak-symbols,
+		[  --enable-weak-symbols   enable weak-symbols for pthreads],
+		[use_weak_symbols=$enableval],
+		[use_weak_symbols=no])
+	AC_MSG_RESULT($use_weak_symbols)
+	if test "x$use_weak_symbols" = xyes ; then
+		CF_WEAK_SYMBOLS
+	else
+		cf_cv_weak_symbols=no
+	fi
+
+	if test "x$cf_cv_weak_symbols" = xyes ; then
+		AC_DEFINE(USE_WEAK_SYMBOLS,1,[Define to 1 to enable weak-symbols for pthreads])
+	fi
+fi
+
+PTHREAD=
+if test "x$with_pthread" = "xyes" ; then
+	AC_DEFINE(USE_PTHREADS,1,[Define to 1 to use pthreads feature])
+	enable_reentrant=yes
+	if test "x$cf_cv_weak_symbols" = xyes ; then
+		PTHREAD=-lpthread
+		CF_ADD_LIB(pthread,PRIVATE_LIBS)
+	fi
+fi
+AC_SUBST(PTHREAD)
+
+# Reentrant code has to be opaque; there's little advantage to making ncurses
+# opaque outside of that, so there is no --enable-opaque option.  We can use
+# this option without --with-pthreads, but this will be always set for
+# pthreads.
+AC_MSG_CHECKING(if you want reentrant code)
+AC_ARG_ENABLE(reentrant,
+	[  --enable-reentrant      compile with reentrant code],
+	[with_reentrant=$enableval],
+	[with_reentrant=no])
+AC_MSG_RESULT($with_reentrant)
+if test "x$with_reentrant" = xyes ; then
+	cf_cv_enable_reentrant=1
+	cf_cv_enable_opaque="NCURSES_INTERNALS"
+	NCURSES_SIZE_T=int
+	if test "x$cf_cv_weak_symbols" = xyes ; then
+		CF_REMOVE_LIB(LIBS,$LIBS,pthread)
+		CF_ADD_LIB(pthread,TEST_LIBS)
+		CF_ADD_LIB(pthread,TEST_LIBS2)
+		CF_ADD_LIB(pthread,PRIVATE_LIBS)
+	else
+		# when not using weak symbols but with_reentrant,
+		# add 't' to the library suffix on all platforms
+		# except cygwin, where we only do that if ALSO
+		# compiling with full thread support.
+		case "$host" in
+		(*cygwin* | *msys*)
+			if test "$with_pthread" = "yes" ; then
+				if test "x$disable_lib_suffixes" = "xno" ; then
+					LIB_SUFFIX="t${LIB_SUFFIX}"
+				fi
+			fi ;;
+		(*)
+			if test "x$disable_lib_suffixes" = "xno" ; then
+				LIB_SUFFIX="t${LIB_SUFFIX}"
+			fi
+			;;
+		esac
+	fi
+	AC_DEFINE(USE_REENTRANT,1,[Define to 1 to use reentrant feature])
+	CF_NCURSES_ABI_6
+else
+	cf_cv_enable_reentrant=0
+	cf_cv_enable_opaque="NCURSES_OPAQUE"
+	NCURSES_SIZE_T=short
+fi
+AC_SUBST(cf_cv_enable_reentrant)
+AC_SUBST(cf_cv_enable_opaque)
+
+AC_SUBST(NCURSES_SIZE_T)
+
+AC_MSG_CHECKING(if you want opaque curses-library structures)
+CF_ARG_ENABLE(opaque-curses,
+	[  --enable-opaque-curses  make curses WINDOW, etc., "opaque"],
+	[enable_opaque_curses=yes],[
+	 test "$cf_cv_enable_reentrant" = 1 && enable_opaque_curses=yes
+	 test "$cf_cv_enable_reentrant" = 1 || enable_opaque_curses=no
+	])
+AC_MSG_RESULT($enable_opaque_curses)
+
+test "$cf_cv_enable_reentrant" = 1 && \
+test "$enable_opaque_curses" = no && \
+AC_MSG_ERROR(reentrant configuration requires opaque library)
+
+AC_MSG_CHECKING(if you want opaque form-library structures)
+AC_ARG_ENABLE(opaque-form,
+	[  --enable-opaque-form    make form-library structures "opaque"],
+	[enable_opaque_form=yes],[enable_opaque_form=no])
+AC_MSG_RESULT($enable_opaque_form)
+
+AC_MSG_CHECKING(if you want opaque menu-library structures)
+AC_ARG_ENABLE(opaque-menu,
+	[  --enable-opaque-menu    make menu-library structures "opaque"],
+	[enable_opaque_menu=yes],[enable_opaque_menu=no])
+AC_MSG_RESULT($enable_opaque_menu)
+
+AC_MSG_CHECKING(if you want opaque panel-library structures)
+AC_ARG_ENABLE(opaque-panel,
+	[  --enable-opaque-panel   make panel-library structures "opaque"],
+	[enable_opaque_panel=yes],[enable_opaque_panel=no])
+AC_MSG_RESULT($enable_opaque_panel)
+
+NCURSES_OPAQUE=0;		test "$enable_opaque_curses" = yes && NCURSES_OPAQUE=1
+NCURSES_OPAQUE_FORM=0;	test "$enable_opaque_form"   = yes && NCURSES_OPAQUE_FORM=1
+NCURSES_OPAQUE_MENU=0;	test "$enable_opaque_menu"   = yes && NCURSES_OPAQUE_MENU=1
+NCURSES_OPAQUE_PANEL=0;	test "$enable_opaque_panel"  = yes && NCURSES_OPAQUE_PANEL=1
+
+AC_SUBST(NCURSES_OPAQUE)
+AC_SUBST(NCURSES_OPAQUE_FORM)
+AC_SUBST(NCURSES_OPAQUE_MENU)
+AC_SUBST(NCURSES_OPAQUE_PANEL)
+
+### Allow using a different wrap-prefix
+if test "$cf_cv_enable_reentrant" != 0 || test "$BROKEN_LINKER" = 1 ; then
+	AC_MSG_CHECKING(for prefix used to wrap public variables)
+	AC_ARG_WITH(wrap-prefix,
+		[  --with-wrap-prefix=XXX  override prefix used for public variables],
+		[NCURSES_WRAP_PREFIX=$withval],
+		[NCURSES_WRAP_PREFIX=_nc_])
+	AC_MSG_RESULT($NCURSES_WRAP_PREFIX)
+else
+	NCURSES_WRAP_PREFIX=_nc_
+fi
+AC_SUBST(NCURSES_WRAP_PREFIX)
+AC_DEFINE_UNQUOTED(NCURSES_WRAP_PREFIX,"$NCURSES_WRAP_PREFIX",[Define to override _nc_ prefix])
 
 ###############################################################################
 # These options are relatively safe to experiment with.
@@ -1233,113 +1436,6 @@ NCURSES_INTEROP_FUNCS=0
 test "x$with_exp_interop" = xyes && NCURSES_INTEROP_FUNCS=1
 AC_SUBST(NCURSES_INTEROP_FUNCS)
 
-# This is still experimental (20080329), but should ultimately be moved to
-# the script-block --with-normal, etc.
-CF_WITH_PTHREAD
-
-if test "x$with_pthread" != xno; then
-	AC_CHECK_FUNC(pthread_kill,[
-		AC_MSG_CHECKING(if you want to allow EINTR in wgetch with pthreads)
-		AC_ARG_ENABLE(pthreads-eintr,
-			[  --enable-pthreads-eintr enable EINTR in wgetch with pthreads],
-			[use_pthreads_eintr=$enableval],
-			[use_pthreads_eintr=no])
-		AC_MSG_RESULT($use_pthreads_eintr)
-		if test "x$use_pthreads_eintr" = xyes ; then
-			AC_DEFINE(USE_PTHREADS_EINTR,1,[Define to 1 to enable EINTR in wgetch with pthreads])
-		fi])
-
-	AC_MSG_CHECKING(if you want to use weak-symbols for pthreads)
-	AC_ARG_ENABLE(weak-symbols,
-		[  --enable-weak-symbols   enable weak-symbols for pthreads],
-		[use_weak_symbols=$enableval],
-		[use_weak_symbols=no])
-	AC_MSG_RESULT($use_weak_symbols)
-	if test "x$use_weak_symbols" = xyes ; then
-		CF_WEAK_SYMBOLS
-	else
-		cf_cv_weak_symbols=no
-	fi
-
-	if test "x$cf_cv_weak_symbols" = xyes ; then
-		AC_DEFINE(USE_WEAK_SYMBOLS,1,[Define to 1 to enable weak-symbols for pthreads])
-	fi
-fi
-
-PTHREAD=
-if test "x$with_pthread" = "xyes" ; then
-	AC_DEFINE(USE_PTHREADS,1,[Define to 1 to use pthreads feature])
-	enable_reentrant=yes
-	if test "x$cf_cv_weak_symbols" = xyes ; then
-		PTHREAD=-lpthread
-	fi
-fi
-AC_SUBST(PTHREAD)
-
-# Reentrant code has to be opaque; there's little advantage to making ncurses
-# opaque outside of that, so there is no --enable-opaque option.  We can use
-# this option without --with-pthreads, but this will be always set for
-# pthreads.
-AC_MSG_CHECKING(if you want reentrant code)
-AC_ARG_ENABLE(reentrant,
-	[  --enable-reentrant      compile with reentrant code],
-	[with_reentrant=$enableval],
-	[with_reentrant=no])
-AC_MSG_RESULT($with_reentrant)
-if test "x$with_reentrant" = xyes ; then
-	cf_cv_enable_reentrant=1
-	cf_cv_enable_opaque="NCURSES_INTERNALS"
-	NCURSES_OPAQUE=1
-	NCURSES_SIZE_T=int
-	if test "x$cf_cv_weak_symbols" = xyes ; then
-		CF_REMOVE_LIB(LIBS,$LIBS,pthread)
-		CF_ADD_LIB(pthread,TEST_LIBS)
-		CF_ADD_LIB(pthread,TEST_LIBS2)
-	else
-		# when not using weak symbols but with_reentrant,
-		# add 't' to the library suffix on all platforms
-		# except cygwin, where we only do that if ALSO
-		# compiling with full thread support.
-		case "$host" in
-		(*cygwin* | *msys*)
-			if test "$with_pthread" = "yes" ; then
-				if test "x$disable_lib_suffixes" = "xno" ; then
-					LIB_SUFFIX="t${LIB_SUFFIX}"
-				fi
-			fi ;;
-		(*)
-			if test "x$disable_lib_suffixes" = "xno" ; then
-				LIB_SUFFIX="t${LIB_SUFFIX}"
-			fi
-			;;
-		esac
-	fi
-	AC_DEFINE(USE_REENTRANT,1,[Define to 1 to use reentrant feature])
-	CF_NCURSES_ABI_6
-else
-	cf_cv_enable_reentrant=0
-	cf_cv_enable_opaque="NCURSES_OPAQUE"
-	NCURSES_OPAQUE=0
-	NCURSES_SIZE_T=short
-fi
-AC_SUBST(cf_cv_enable_reentrant)
-AC_SUBST(cf_cv_enable_opaque)
-AC_SUBST(NCURSES_OPAQUE)
-AC_SUBST(NCURSES_SIZE_T)
-
-### Allow using a different wrap-prefix
-if test "$cf_cv_enable_reentrant" != 0 || test "$BROKEN_LINKER" = 1 ; then
-	AC_MSG_CHECKING(for prefix used to wrap public variables)
-	AC_ARG_WITH(wrap-prefix,
-		[  --with-wrap-prefix=XXX  override prefix used for public variables],
-		[NCURSES_WRAP_PREFIX=$withval],
-		[NCURSES_WRAP_PREFIX=_nc_])
-	AC_MSG_RESULT($NCURSES_WRAP_PREFIX)
-else
-	NCURSES_WRAP_PREFIX=_nc_
-fi
-AC_SUBST(NCURSES_WRAP_PREFIX)
-AC_DEFINE_UNQUOTED(NCURSES_WRAP_PREFIX,"$NCURSES_WRAP_PREFIX",[Define to override _nc_ prefix])
 
 AC_MSG_CHECKING(if you want experimental safe-sprintf code)
 AC_ARG_ENABLE(safe-sprintf,
@@ -1347,7 +1443,6 @@ AC_ARG_ENABLE(safe-sprintf,
 	[with_safe_sprintf=$enableval],
 	[with_safe_sprintf=no])
 AC_MSG_RESULT($with_safe_sprintf)
-test "x$with_safe_sprintf" = xyes && AC_DEFINE(USE_SAFE_SPRINTF,1,[Define to 1 to compile with experimental safe-sprintf code])
 
 ###   use option --disable-scroll-hints to turn off use of scroll-hints scrolling logic
 # when hashmap is used scroll hints are useless
@@ -1382,6 +1477,24 @@ else
 	test -n "$LIBTOOL_CXX" && LIBTOOL_CXX="$LIBTOOL_CXX --silent"
 fi
 AC_SUBST(ECHO_LINK)
+
+# --disable-stripping is used for debugging
+CF_INSTALL_OPTS
+
+# If we're avoiding relinking of shared libraries during install, that is to
+# avoid modifying the build-tree.  For the same reason, avoid doing ranlib if
+# the install program has "-p" (for preserving timestamps).
+cf_cv_do_reranlib=yes
+if test "x$cf_cv_install_p" = xyes
+then
+	if test "x$cf_cv_do_relink" != xyes
+	then
+		cf_cv_do_reranlib=no
+		INSTALL_OPT_P="-p"
+		INSTALL_LIB="$INSTALL_LIB $INSTALL_OPT_P"
+	fi
+fi
+AC_SUBST(INSTALL_OPT_P)
 
 ###	use option --enable-warnings to turn on all gcc warnings
 AC_MSG_CHECKING(if you want to see compiler warnings)
@@ -1451,6 +1564,7 @@ if test "x$cf_with_trace" = xyes ; then
 	LIB_TRACING=all
 	ADA_TRACE=TRUE
 	CF_ADD_CFLAGS(-DTRACE)
+	AC_DEFINE(HAVE__TRACEF,1,[Define to 1 if we have _tracef function])
 else
 	LIB_TRACING=DEBUG
 	ADA_TRACE=FALSE
@@ -1568,14 +1682,27 @@ sigaction \
 sigvec \
 strdup \
 strstr \
+sysconf \
 tcgetpgrp \
+tdestroy \
 times \
+tsearch \
 vsnprintf \
 )
 
-if test "x$ac_cv_func_getopt" = xno &&
+if test "x$ac_cv_func_getopt" = xno && \
    test "x$cf_with_progs$cf_with_tests" != xnono; then
 	AC_MSG_ERROR(getopt is required for building programs)
+fi
+
+if test "x$with_safe_sprintf" = xyes
+then
+	if test "x$ac_cv_func_vsnprintf" = xyes
+	then
+		AC_MSG_WARN(will use vsnprintf instead of safe-sprintf option)
+	else
+		AC_DEFINE(USE_SAFE_SPRINTF,1,[Define to 1 to compile with experimental safe-sprintf code])
+	fi
 fi
 
 if test "x$with_getcap" = "xyes" ; then
@@ -2209,10 +2336,16 @@ AC_SUBST(UNALTERED_SYMS)
 
 if test "x$cross_compiling" = xyes ; then
 	ADAGEN_LDFLAGS='$(CROSS_LDFLAGS)'
+	CHECK_BUILD="#"
 else
 	ADAGEN_LDFLAGS='$(NATIVE_LDFLAGS)'
+	CHECK_BUILD=
 fi
 AC_SUBST(ADAGEN_LDFLAGS)
+AC_SUBST(CHECK_BUILD)
+AC_SUBST(PRIVATE_LIBS)
+
+AC_DEFINE(HAVE_CURSES_DATA_BOOLNAMES,1,[definition needed for in-tree build of tack])
 
 AC_OUTPUT( \
 	include/MKterm.h.awk \
@@ -2279,6 +2412,7 @@ WITH_OVERWRITE="$with_overwrite"
 cf_LIST_MODELS="$cf_list_models"
 cf_cv_abi_version="$cf_cv_abi_version"
 cf_cv_do_relink="$cf_cv_do_relink"
+cf_cv_do_reranlib="$cf_cv_do_reranlib"
 cf_cv_do_symlinks="$cf_cv_do_symlinks"
 cf_cv_enable_lp64="$cf_cv_enable_lp64"
 cf_cv_enable_opaque="$cf_cv_enable_opaque"

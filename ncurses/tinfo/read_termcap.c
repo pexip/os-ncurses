@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2013,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -56,7 +56,7 @@
 #include <sys/types.h>
 #include <tic.h>
 
-MODULE_ID("$Id: read_termcap.c,v 1.90 2016/09/10 20:13:11 tom Exp $")
+MODULE_ID("$Id: read_termcap.c,v 1.96 2018/05/12 18:52:02 tom Exp $")
 
 #if !PURE_TERMINFO
 
@@ -66,10 +66,10 @@ MODULE_ID("$Id: read_termcap.c,v 1.90 2016/09/10 20:13:11 tom Exp $")
 #define TC_REF_LOOP   -3
 #define TC_UNRESOLVED -4	/* this is not returned by BSD cgetent */
 
-static NCURSES_CONST char *
+static const char *
 get_termpath(void)
 {
-    NCURSES_CONST char *result;
+    const char *result;
 
     if (!use_terminfo_vars() || (result = getenv("TERMPATH")) == 0)
 	result = TERMPATH;
@@ -364,7 +364,7 @@ _nc_getent(
 			if (bp >= b_end) {
 			    int n;
 
-			    n = read(fd, buf, sizeof(buf));
+			    n = (int) read(fd, buf, sizeof(buf));
 			    if (n <= 0) {
 				if (myfd)
 				    (void) close(fd);
@@ -393,7 +393,7 @@ _nc_getent(
 				|| *(rp - 1) != '\\')
 				break;
 			}
-			*rp++ = c;
+			*rp++ = (char) c;
 
 			/*
 			 * Enforce loop invariant: if no room
@@ -404,8 +404,8 @@ _nc_getent(
 			    unsigned pos;
 			    size_t newsize;
 
-			    pos = rp - record;
-			    newsize = r_end - record + BFRAG;
+			    pos = (unsigned) (rp - record);
+			    newsize = (size_t) (r_end - record + BFRAG);
 			    record = DOALLOC(newsize);
 			    if (record == 0) {
 				if (myfd)
@@ -492,14 +492,14 @@ _nc_getent(
 		}
 	    }
 	    tcstart = tc - 3;
-	    tclen = s - tcstart;
+	    tclen = (int) (s - tcstart);
 	    tcend = s;
 
 	    icap = 0;
 	    iret = _nc_getent(&icap, &ilen, &oline, current, db_array, fd,
 			      tc, depth + 1, 0);
 	    newicap = icap;	/* Put into a register. */
-	    newilen = ilen;
+	    newilen = (int) ilen;
 	    if (iret != TC_SUCCESS) {
 		/* an error */
 		if (iret < TC_NOT_FOUND) {
@@ -523,7 +523,7 @@ _nc_getent(
 	    /* not interested in name field of tc'ed record */
 	    s = newicap;
 	    while (*s != '\0' && *s++ != ':') ;
-	    newilen -= s - newicap;
+	    newilen -= (int) (s - newicap);
 	    newicap = s;
 
 	    /* make sure interpolated record is `:'-terminated */
@@ -542,10 +542,10 @@ _nc_getent(
 		unsigned pos, tcpos, tcposend;
 		size_t newsize;
 
-		pos = rp - record;
-		newsize = r_end - record + diff + BFRAG;
-		tcpos = tcstart - record;
-		tcposend = tcend - record;
+		pos = (unsigned) (rp - record);
+		newsize = (size_t) (r_end - record + diff + BFRAG);
+		tcpos = (unsigned) (tcstart - record);
+		tcposend = (unsigned) (tcend - record);
 		record = DOALLOC(newsize);
 		if (record == 0) {
 		    if (myfd)
@@ -583,7 +583,7 @@ _nc_getent(
      */
     if (myfd)
 	(void) close(fd);
-    *len = rp - record - 1;	/* don't count NUL */
+    *len = (unsigned) (rp - record - 1);	/* don't count NUL */
     if (r_end > rp) {
 	if ((record = DOALLOC((size_t) (rp - record))) == 0) {
 	    errno = ENOMEM;
@@ -791,7 +791,7 @@ _nc_tgetent(char *bp, char **sourcename, int *lineno, const char *name)
     int i;
     char pathbuf[PBUFSIZ];	/* holds raw path of filenames */
     CGETENT_CONST char *pathvec[PVECSIZ];	/* point to names in pathbuf */
-    NCURSES_CONST char *termpath;
+    const char *termpath;
     string_desc desc;
 
     *lineno = 1;
@@ -956,7 +956,7 @@ add_tc(char *termpaths[], char *path, int count)
 #endif /* !USE_GETCAP */
 
 NCURSES_EXPORT(int)
-_nc_read_termcap_entry(const char *const tn, TERMTYPE *const tp)
+_nc_read_termcap_entry(const char *const tn, TERMTYPE2 *const tp)
 {
     int found = TGETENT_NO;
     ENTRY *ep;
@@ -1141,7 +1141,8 @@ _nc_read_termcap_entry(const char *const tn, TERMTYPE *const tp)
 	return (TGETENT_ERR);
 
     /* resolve all use references */
-    _nc_resolve_uses2(TRUE, FALSE);
+    if (_nc_resolve_uses2(TRUE, FALSE) != TRUE)
+	return (TGETENT_ERR);
 
     /* find a terminal matching tn, if we can */
 #if USE_GETCAP_CACHE

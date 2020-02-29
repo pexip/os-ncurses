@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,7 +29,7 @@
 /*
  * Author: Thomas E. Dickey (1998-on)
  *
- * $Id: ditto.c,v 1.44 2016/09/04 20:43:04 tom Exp $
+ * $Id: ditto.c,v 1.48 2018/05/20 19:19:10 tom Exp $
  *
  * The program illustrates how to set up multiple screens from a single
  * program.
@@ -43,6 +43,8 @@
  */
 #include <test.priv.h>
 #include <sys/stat.h>
+
+#if HAVE_DELSCREEN
 
 #ifdef USE_PTHREADS
 #include <pthread.h>
@@ -112,7 +114,7 @@ failed(const char *s)
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: ditto [terminal1 ...]\n");
+    fprintf(stderr, "Usage: ditto [terminal1 ...]\n");
     ExitProgram(EXIT_FAILURE);
 }
 
@@ -194,7 +196,7 @@ open_tty(char *path)
     return fp;
 }
 
-static void
+static int
 init_screen(
 #if HAVE_USE_WINDOW
 	       SCREEN *sp GCC_UNUSED,
@@ -234,6 +236,7 @@ init_screen(
 	target->windows[k] = inner;
     }
     doupdate();
+    return TRUE;
 }
 
 static void
@@ -450,3 +453,11 @@ main(int argc, char *argv[])
     }
     ExitProgram(EXIT_SUCCESS);
 }
+#else
+int
+main(void)
+{
+    printf("This program requires the curses delscreen function\n");
+    ExitProgram(EXIT_FAILURE);
+}
+#endif
