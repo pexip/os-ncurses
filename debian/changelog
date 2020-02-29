@@ -1,3 +1,9 @@
+ncurses (6.1+20181013-2+deb10u2pexip1) pexip; urgency=medium
+
+  * Migrate to Buster
+
+ -- Vincent Sanders <vince@pexip.com>  Sat, 29 Feb 2020 17:56:22 +0000
+
 ncurses (6.1+20181013-2+deb10u2) buster; urgency=medium
 
   * Cherry-pick tic fixes from upstream patchlevels 20191012,
