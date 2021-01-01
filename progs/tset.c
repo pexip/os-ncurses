@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -97,7 +98,7 @@
 char *ttyname(int fd);
 #endif
 
-MODULE_ID("$Id: tset.c,v 1.120 2017/10/08 00:01:29 tom Exp $")
+MODULE_ID("$Id: tset.c,v 1.125 2020/09/05 22:54:47 tom Exp $")
 
 #ifndef environ
 extern char **environ;
@@ -132,7 +133,7 @@ exit_error(void)
 }
 
 static void
-err(const char *fmt,...)
+err(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -226,10 +227,16 @@ static MAP *cur, *maplist;
 #define DATA(name,value) { { name }, value }
 
 typedef struct speeds {
-    const char string[7];
+    const char string[8];
     int speed;
 } SPEEDS;
 
+#if defined(EXP_WIN32_DRIVER)
+static const SPEEDS speeds[] =
+{
+    {"0", 0}
+};
+#else
 static const SPEEDS speeds[] =
 {
     DATA("0", B0),
@@ -330,6 +337,7 @@ static const SPEEDS speeds[] =
 #endif
 };
 #undef DATA
+#endif
 
 static int
 tbaudrate(char *rate)
@@ -838,6 +846,8 @@ main(int argc, char **argv)
     oldmode = mode;
 #ifdef TERMIOS
     ospeed = (NCURSES_OSPEED) cfgetospeed(&mode);
+#elif defined(EXP_WIN32_DRIVER)
+    ospeed = 0;
 #else
     ospeed = (NCURSES_OSPEED) mode.sg_ospeed;
 #endif

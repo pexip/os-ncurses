@@ -1,26 +1,134 @@
-ncurses (6.1+20181013-2+deb10u2) buster; urgency=medium
+ncurses (6.2+20201114-2) unstable; urgency=medium
 
-  * Cherry-pick tic fixes from upstream patchlevels 20191012,
-    20191015 and 20191019 (Closes: #942401).
-    - Check for invalid hashcode in _nc_find_type_entry and
-      nc_find_entry (CVE-2019-17594).
-    - Check for missing character after backslash in fmt_entry
-     (CVE-2019-17595).
-    - Check for acsc with odd length in dump_entry in check for
-      one-one mapping.
-    - Check for missing character after backslash in write_it.
-    - Modify tic to exit if it cannot remove a conflicting name, because
-      treating that as a partial success can cause an infinite loop in
-      use-resolution.
+  * New patch 02-fix-mlterm.diff, cherry-picked from the 20201205 upstream
+    patchlevel.
+    - Correct mlterm3 kf1-kf4 (Closes: #975322).
+    - Add flash to mlterm3.
+  * Refresh Debian patches.
 
- -- Sven Joachim <svenjoac@gmx.de>  Sat, 02 Nov 2019 19:16:19 +0100
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 01 Jan 2021 16:02:10 +0100
 
-ncurses (6.1+20181013-2+deb10u1) buster; urgency=medium
+ncurses (6.2+20201114-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Add tmux-direct terminfo entry (Closes: #895754).
+  * Add Breaks on cowdancer (<< 0.89~) to libncurses6 (Closes: #971672).
+  * Upgrade Standards-Version to 4.5.1, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 19 Nov 2020 18:08:43 +0100
+
+ncurses (6.2+20200918-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Corrected condition for appending curses.events to the generated
+      curses.h (report by Sven Joachim, Closes: #970577).
+   * Version the Provides of the transitional -dev packages
+     by libncurses-dev.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 20 Sep 2020 11:16:40 +0200
+
+ncurses (6.2+20200912-1) unstable; urgency=medium
+
+  [ Sven Joachim ]
+  * New upstream patchlevel.
+    - Move dlclose() call from lib_mouse.c to delscreen() to avoid a
+      case in the former which could be called from SIGTSTP handler
+      (Closes: #961097).
+  * Update symbols files for new symbol _nc_tiparm.
+  * Bump autoconf-dickey build dependency to (>= 2.52+20200111), as per
+    configure.in.
+  * Bump debhelper compatibility level to 13.
+    - Use the substition feature in that compat level to get rid of the
+      debian/*.{install,links}.in files.
+
+  [ Debian Janitor ]
+  * Wrap long lines in changelog entries: 5.0-5.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 17 Sep 2020 19:18:53 +0200
+
+ncurses (6.2-1) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Rely on pre-initialized dpkg-architecture variables.
+  * Fix day-of-week for changelog entries 5.7+20090314-1, 5.6+20080419-
+    2.
+
+  [ Sven Joachim ]
+  * New upstream release.
+  * Refresh Debian patches.
+  * Update symbols files and bump shlibs.
+    - Update the minimal version for symbols added after the 6.1 release
+      to 6.2.
+    - Silence the package-placeholder-in-symbols-file lintian warning
+      in the ABI5 library packages.
+  * Get rid of debian/xterm.ti, and record the changes Debian makes to the
+    xterm* terminfo entries in a new patch 02-debian-xterm.diff.
+  * Switch debian/copyright to format 1.0, and update the years.
+  * Upgrade Standards-Version to 4.5.0, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 29 Feb 2020 10:05:22 +0100
+
+ncurses (6.1+20191019-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Fix several errata in tic (Closes: #942401).
+      + Check for invalid hashcode in _nc_find_type_entry
+        and nc_find_name_entry (CVE-2019-17594).
+      + Check for invalid hashcode in _nc_find_entry.
+      + Check for missing character after backslash in fmt_entry
+        (CVE-2019-17595).
+  * Refresh patch 03-debian-ncursesconfig-omit-L.diff.
+  * Support additional build profiles:
+    - Skip building ABI 5 libraries in a pkg.ncurses.nolegacy build profile.
+    - Skip building the examples in a pkg.ncurses.noexamples build profile.
+    - Do not build libtinfo6-udeb in the noudeb build profile.
+  * Add a "Replaces: alacritty (<< 0.3.4~)" to ncurses-term
+    (Closes: #933386).
+  * Add a Salsa CI pipeline in debian/gitlab-ci.yml.
+  * Export BUILD_{C,CPP,LD}FLAGS in debian/rules, making blhc happy.
+  * Upgrade Standards-Version to 4.4.1, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 24 Oct 2019 18:18:57 +0200
+
+ncurses (6.1+20190803-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Amend the change to screen, because tmux relies upon that entry
+      and does not support that feature (Closes: #933572).
+  * New patch 02-debian-drop-rin-from-screen-256color.diff: remove "rin"
+    also from screen-256color, used by some tmux users as their $TERM.
+  * Drop patch fix-tabs-manpage-installation.diff, applied upstream.
+  * Refresh patch 02-debian-backspace.diff after upstream changes to
+    the screen terminfo description.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 08 Aug 2019 17:39:10 +0200
+
+ncurses (6.1+20190713-2) unstable; urgency=medium
 
   * Drop "rep" from xterm-new and derived terminfo descriptions
     (Closes: #933053).
 
- -- Sven Joachim <svenjoac@gmx.de>  Mon, 05 Aug 2019 20:03:21 +0200
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 01 Aug 2019 18:12:18 +0200
+
+ncurses (6.1+20190713-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+  * Refresh patch 02-debian-backspace.diff after upstream changes to
+    the screen terminfo description.
+  * New patch fix-tabs-manpage-installation.diff, reverts a broken
+    upstream change which inadvertently installed the tabs.1 manpage
+    as a dangling symlink.
+  * Update symbols files for new symbol _nc_find_user_entry.
+  * Move the tmux and tmux-256color terminfo entries to ncurses-base
+    (Closes: #927973).
+  * Bump debhelper compatibility level to 12.
+    - Build-depend on debhelper-compat (= 12) and drop debian/compat.
+  * Drop the -dbg packages (Closes: #849003).
+  * Reduce the size of the -dbgsym packages with dh_dwz.
+  * Update years in debian/copyright.
+  * Upgrade Standards-Version to 4.4.0, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 19 Jul 2019 17:14:25 +0200
 
 ncurses (6.1+20181013-2) unstable; urgency=medium
 
@@ -1053,7 +1161,7 @@ ncurses (5.7+20090314-1) unstable; urgency=low
 
   * Merging upstream version 5.7+20090314.
 
- -- Daniel Baumann <daniel@debian.org>  Thu, 14 Mar 2009 07:14:00 +0100
+ -- Daniel Baumann <daniel@debian.org>  Sat, 14 Mar 2009 07:14:00 +0100
 
 ncurses (5.7+20090228-1) unstable; urgency=low
 
@@ -1385,7 +1493,7 @@ ncurses (5.6+20080419-2) unstable; urgency=low
   * Using tightened versioned depends in ncurses-base on libncurses5
     (Closes: #477725).
 
- -- Daniel Baumann <daniel@debian.org>  Fri, 29 Apr 2008 07:53:00 +0200
+ -- Daniel Baumann <daniel@debian.org>  Tue, 29 Apr 2008 07:53:00 +0200
 
 ncurses (5.6+20080419-1) unstable; urgency=low
 
@@ -1994,7 +2102,8 @@ ncurses (5.0-6) frozen unstable; urgency=low
 
 ncurses (5.0-5) frozen unstable; urgency=low
 
-  * Update xterm.ti from Branden Robinson <branden@debian.org> (closes:Bug#55840).
+  * Update xterm.ti from Branden Robinson <branden@debian.org>
+    (closes:Bug#55840).
   * ncurses-base: Include /usr/share/terminfo/x/xterm-color ->
     /etc/terminfo/x/xterm-color symlink (closes:Bug#56101,#55619).
   * debian/rxvt.ti: Remove kf0 due to clash with kf10 (closes:Bug#56086).

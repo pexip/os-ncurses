@@ -1,7 +1,8 @@
 <!-- 
   * t
   ****************************************************************************
-  * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+  * Copyright 2018,2020 Thomas E. Dickey                                     *
+  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
   *                                                                          *
   * Permission is hereby granted, free of charge, to any person obtaining a  *
   * copy of this software and associated documentation files (the            *
@@ -27,7 +28,7 @@
   * sale, use or other dealings in this Software without prior written       *
   * authorization.                                                           *
   ****************************************************************************
-  * @Id: tput.1,v 1.61 2018/08/25 23:28:12 tom Exp @
+  * @Id: tput.1,v 1.64 2020/04/25 21:52:49 tom Exp @
 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
 <HTML>
@@ -35,7 +36,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
 <meta name="generator" content="Manpage converted by man2html - see https://invisible-island.net/scripts/readme.html#others_scripts">
 <TITLE>tput 1</TITLE>
-<link rev=made href="mailto:bug-ncurses@gnu.org">
+<link rel="author" href="mailto:bug-ncurses@gnu.org">
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 </HEAD>
 <BODY>
@@ -247,8 +248,8 @@
 
 </PRE><H3><a name="h3-Terminal-Size">Terminal Size</a></H3><PRE>
        Besides  the  special  commands (e.g., <STRONG>clear</STRONG>), tput treats certain ter-
-       minfo  capabilities  specially:  <STRONG>lines</STRONG>   and   <STRONG>columns</STRONG>.    tput   calls
-       <STRONG><A HREF="curs_terminfo.3x.html">setupterm(3x)</A></STRONG> to obtain the terminal size:
+       minfo capabilities specially: <STRONG>lines</STRONG> and <STRONG>cols</STRONG>.  tput calls <STRONG><A HREF="curs_terminfo.3x.html">setupterm(3x)</A></STRONG>
+       to obtain the terminal size:
 
        <STRONG>o</STRONG>   first, it gets the size from the terminal database (which generally
            is not provided for terminal emulators which do not  have  a  fixed
@@ -505,7 +506,7 @@
 
        <STRONG>o</STRONG>   It  assigns exit code 4 to "invalid operand", which may be the same
            as <EM>unknown</EM> <EM>capability</EM>.  For instance, the source code for  Solaris'
-           xcurses uses the term "invalid' in this case.
+           xcurses uses the term "invalid" in this case.
 
        <STRONG>o</STRONG>   It  assigns  exit code 255 to a numeric variable that is not speci-
            fied in the terminfo database.   That  likely  is  a  documentation
@@ -522,7 +523,7 @@
 </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
        <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>, <STRONG>stty(1)</STRONG>, <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>, <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
 
-       This describes <STRONG>ncurses</STRONG> version 6.1 (patch 20180901).
+       This describes <STRONG>ncurses</STRONG> version 6.2 (patch 20201107).
 
 
 

@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2009,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,9 +38,9 @@
  */
 #include "panel.priv.h"
 
-MODULE_ID("$Id: p_delete.c,v 1.10 2010/01/23 21:22:16 tom Exp $")
+MODULE_ID("$Id: p_delete.c,v 1.16 2020/09/26 23:58:55 tom Exp $")
 
-NCURSES_EXPORT(int)
+PANEL_EXPORT(int)
 del_panel(PANEL * pan)
 {
   int err = OK;
@@ -47,12 +48,11 @@ del_panel(PANEL * pan)
   T((T_CALLED("del_panel(%p)"), (void *)pan));
   if (pan)
     {
-      dBug(("--> del_panel %s", USER_PTR(pan->user)));
-      {
-	GetHook(pan);
-	HIDE_PANEL(pan, err, OK);
-	free((void *)pan);
-      }
+      GetHook(pan);
+      HIDE_PANEL(pan, err, OK);
+      dBug(("...discard ptr=%s", USER_PTR(pan->user, 1)));
+      dBug(("...deleted pan=%p", pan));
+      free((void *)pan);
     }
   else
     err = ERR;

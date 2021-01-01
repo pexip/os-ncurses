@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2017,2018 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -48,7 +49,7 @@
 #include <parametrized.h>
 #include <transform.h>
 
-MODULE_ID("$Id: tic.c,v 1.256 2018/03/18 00:05:10 tom Exp $")
+MODULE_ID("$Id: tic.c,v 1.290 2020/11/14 18:16:33 tom Exp $")
 
 #define STDIN_NAME "<stdin>"
 
@@ -59,6 +60,7 @@ static FILE *tmp_fp;
 static bool capdump = FALSE;	/* running as infotocap? */
 static bool infodump = FALSE;	/* running as captoinfo? */
 static bool showsummary = FALSE;
+static unsigned debug_level;
 static char **namelst = 0;
 static const char *to_remove;
 
@@ -217,7 +219,8 @@ write_it(ENTRY * ep)
 	    while ((ch = *t++) != 0) {
 		*d++ = (char) ch;
 		if (ch == '\\') {
-		    *d++ = *t++;
+		    if ((*d++ = *t++) == '\0')
+			break;
 		} else if ((ch == '%')
 			   && (*t == L_BRACE)) {
 		    char *v = 0;
@@ -680,7 +683,6 @@ main(int argc, char *argv[])
     char my_tmpname[PATH_MAX];
     char my_altfile[PATH_MAX];
     int v_opt = -1;
-    unsigned debug_level;
     int smart_defaults = TRUE;
     char *termcap;
     ENTRY *qp;
@@ -1024,10 +1026,14 @@ main(int argc, char *argv[])
 		    if (!quiet) {
 			(void) fseek(tmp_fp, qp->cstart, SEEK_SET);
 			while (j-- > 0) {
-			    if (infodump)
-				(void) putchar(fgetc(tmp_fp));
-			    else
-				put_translate(fgetc(tmp_fp));
+			    int ch = fgetc(tmp_fp);
+			    if (ch == EOF || ferror(tmp_fp)) {
+				break;
+			    } else if (infodump) {
+				(void) putchar(ch);
+			    } else {
+				put_translate(ch);
+			    }
 			}
 		    }
 
@@ -1095,6 +1101,50 @@ main(int argc, char *argv[])
 static void
 check_acs(TERMTYPE2 *tp)
 {
+    int vt100_smacs = 0;
+    int vt100_rmacs = 0;
+    int vt100_enacs = 0;
+
+    /*
+     * ena_acs is not always necessary, but if it is present, the enter/exit
+     * capabilities should be.
+     */
+    ANDMISSING(ena_acs, enter_alt_charset_mode);
+    ANDMISSING(ena_acs, exit_alt_charset_mode);
+    PAIRED(exit_alt_charset_mode, exit_alt_charset_mode);
+
+    /*
+     * vt100-like is frequently used, but perhaps ena_acs is missing, etc.
+     */
+    if (VALID_STRING(enter_alt_charset_mode)) {
+	vt100_smacs = (!strcmp("\033(0", enter_alt_charset_mode)
+		       ? 2
+		       : (!strcmp("\016", enter_alt_charset_mode)
+			  ? 1
+			  : 0));
+    }
+    if (VALID_STRING(exit_alt_charset_mode)) {
+	vt100_rmacs = (!strcmp("\033(B", exit_alt_charset_mode)
+		       ? 2
+		       : (!strcmp("\017", exit_alt_charset_mode)
+			  ? 1
+			  : 0));
+    }
+    if (VALID_STRING(ena_acs)) {
+	vt100_enacs = (!strcmp("\033(B\033)0", ena_acs)
+		       ? 2
+		       : 0);
+    }
+    if (vt100_rmacs && vt100_smacs && (vt100_rmacs != vt100_smacs)) {
+	_nc_warning("rmacs/smacs are inconsistent");
+    }
+    if ((vt100_rmacs == 2) && (vt100_smacs == 2) && vt100_enacs) {
+	_nc_warning("rmacs/smacs make enacs redundant");
+    }
+    if ((vt100_rmacs == 1) && (vt100_smacs == 1) && !vt100_enacs) {
+	_nc_warning("VT100-style rmacs/smacs require enacs");
+    }
+
     if (VALID_STRING(acs_chars)) {
 	const char *boxes = "lmkjtuvwqxn";
 	char mapped[256];
@@ -1129,6 +1179,14 @@ check_acs(TERMTYPE2 *tp)
     }
 }
 
+static char *
+safe_strdup(const char *value)
+{
+    if (value == NULL)
+	value = "";
+    return strdup(value);
+}
+
 static bool
 same_color(NCURSES_CONST char *oldcap, NCURSES_CONST char *newcap, int limit)
 {
@@ -1139,8 +1197,8 @@ same_color(NCURSES_CONST char *oldcap, NCURSES_CONST char *newcap, int limit)
 	int n;
 	int same;
 	for (n = same = 0; n < limit; ++n) {
-	    char *oldvalue = strdup(TPARM_1(oldcap, n));
-	    char *newvalue = strdup(TPARM_1(newcap, n));
+	    char *oldvalue = safe_strdup(TIPARM_1(oldcap, n));
+	    char *newvalue = safe_strdup(TIPARM_1(newcap, n));
 	    same += !strcmp(oldvalue, newvalue);
 	    free(oldvalue);
 	    free(newvalue);
@@ -1156,6 +1214,8 @@ same_color(NCURSES_CONST char *oldcap, NCURSES_CONST char *newcap, int limit)
 static void
 check_colors(TERMTYPE2 *tp)
 {
+    char *value;
+
     if ((max_colors > 0) != (max_pairs > 0)
 	|| ((max_colors > max_pairs) && (initialize_pair == 0)))
 	_nc_warning("inconsistent values for max_colors (%d) and max_pairs (%d)",
@@ -1202,6 +1262,15 @@ check_colors(TERMTYPE2 *tp)
 	if (VALID_STRING(initialize_pair) ||
 	    VALID_STRING(initialize_color)) {
 	    _nc_warning("expected ccc because initc is given");
+	}
+    }
+    value = tigetstr("RGB");
+    if (VALID_STRING(value)) {
+	int r, g, b;
+	char bad;
+	int code = sscanf(value, "%d/%d/%d%c", &r, &g, &b, &bad);
+	if (code != 3 || r <= 0 || g <= 0 || b <= 0) {
+	    _nc_warning("unexpected value for RGB capability: %s", value);
 	}
     }
 }
@@ -1622,6 +1691,7 @@ check_printer(TERMTYPE2 *tp)
 #endif
 }
 
+#if NCURSES_XNAMES
 static bool
 uses_SGR_39_49(const char *value)
 {
@@ -1635,7 +1705,6 @@ uses_SGR_39_49(const char *value)
 static void
 check_screen(TERMTYPE2 *tp)
 {
-#if NCURSES_XNAMES
     if (_nc_user_definable) {
 	int have_XT = tigetflag("XT");
 	int have_XM = tigetflag("XM");
@@ -1666,33 +1735,35 @@ check_screen(TERMTYPE2 *tp)
 	}
 
 	if (have_XM && have_XT) {
-	    _nc_warning("Screen's XT capability conflicts with XM");
+	    _nc_warning("screen's XT capability conflicts with XM");
 	} else if (have_XT && screen_base) {
-	    _nc_warning("Screen's \"screen\" entries should not have XT set");
+	    _nc_warning("screen's \"screen\" entries should not have XT set");
 	} else if (have_XT) {
 	    if (!have_kmouse && is_screen) {
 		if (VALID_STRING(key_mouse)) {
-		    _nc_warning("Value of kmous inconsistent with screen's usage");
+		    _nc_warning("value of kmous inconsistent with screen's usage");
 		} else {
-		    _nc_warning("Expected kmous capability with XT");
+		    _nc_warning("expected kmous capability with XT");
 		}
 	    }
 	    if (!have_bce && max_colors > 0)
-		_nc_warning("Expected bce capability with XT");
+		_nc_warning("expected bce capability with XT");
 	    if (!use_sgr_39_49 && have_bce && max_colors > 0)
-		_nc_warning("Expected orig_colors capability with XT to have 39/49 parameters");
+		_nc_warning("expected orig_colors capability with XT to have 39/49 parameters");
 	    if (VALID_STRING(to_status_line))
 		_nc_warning("\"tsl\" capability is redundant, given XT");
 	} else {
 	    if (have_kmouse
 		&& !have_XM
 		&& !screen_base && strchr(name, '+') == 0) {
-		_nc_warning("Expected XT to be set, given kmous");
+		_nc_warning("expected XT to be set, given kmous");
 	    }
 	}
     }
-#endif
 }
+#else
+#define check_screen(tp)	/* nothing */
+#endif
 
 /*
  * Returns the expected number of parameters for the given capability.
@@ -1772,7 +1843,6 @@ expected_params(const char *name)
 	DATA( "wingo",		1 ),
     };
     /* *INDENT-ON* */
-
 #undef DATA
 
     unsigned n;
@@ -1789,12 +1859,32 @@ expected_params(const char *name)
 }
 
 /*
+ * Check for user-capabilities that happen to be used in ncurses' terminal
+ * database.
+ */
+#if NCURSES_XNAMES
+static struct user_table_entry const *
+lookup_user_capability(const char *name)
+{
+    struct user_table_entry const *result = 0;
+    if (*name != 'k') {
+	result = _nc_find_user_entry(name);
+    }
+    return result;
+}
+#endif
+
+/*
+ * If a given name is likely to be a user-capability, return the number of
+ * parameters it would be used with.  If not, return -1.
+ *
  * ncurses assumes that u6 could be used for getting the cursor-position, but
  * that is not implemented.  Make a special case for that, to quiet needless
  * warnings.
  *
- * There are other string-capability extensions (see terminfo.src) which could
- * have parameters such as "Ss", "%u", but are not used by ncurses.
+ * The other string-capability extensions (see terminfo.src) which could have
+ * parameters such as "Ss", "%u", are not used by ncurses.  But we check those
+ * anyway, to validate the terminfo database.
  */
 static int
 is_user_capability(const char *name)
@@ -1802,8 +1892,17 @@ is_user_capability(const char *name)
     int result = -1;
     if (name[0] == 'u' &&
 	(name[1] >= '0' && name[1] <= '9') &&
-	name[2] == '\0')
+	name[2] == '\0') {
 	result = (name[1] == '6') ? 2 : 0;
+    }
+#if NCURSES_XNAMES
+    else if (using_extensions) {
+	struct user_table_entry const *p = lookup_user_capability(name);
+	if (p != 0) {
+	    result = (int) p->ute_argc;
+	}
+    }
+#endif
     return result;
 }
 
@@ -1818,7 +1917,7 @@ check_params(TERMTYPE2 *tp, const char *name, char *value, int extended)
     int expected = expected_params(name);
     int actual = 0;
     int n;
-    bool params[NUM_PARM];
+    bool params[1 + NUM_PARM];
     char *s = value;
 
 #ifdef set_top_margin_parm
@@ -1827,7 +1926,7 @@ check_params(TERMTYPE2 *tp, const char *name, char *value, int extended)
 	expected = 2;
 #endif
 
-    for (n = 0; n < NUM_PARM; n++)
+    for (n = 0; n <= NUM_PARM; n++)
 	params[n] = FALSE;
 
     while (*s != 0) {
@@ -1850,13 +1949,21 @@ check_params(TERMTYPE2 *tp, const char *name, char *value, int extended)
 	s++;
     }
 
+#if NCURSES_XNAMES
     if (extended) {
-	if (actual > 0) {
-	    _nc_warning("extended %s capability has %d parameters",
+	int check = is_user_capability(name);
+	if (check != actual && (check >= 0 && actual >= 0)) {
+	    _nc_warning("extended %s capability has %d parameters, expected %d",
+			name, actual, check);
+	} else if (debug_level > 1) {
+	    _nc_warning("extended %s capability has %d parameters, as expected",
 			name, actual);
-	    expected = actual;
 	}
+	expected = actual;
     }
+#else
+    (void) extended;
+#endif
 
     if (params[0]) {
 	_nc_warning("%s refers to parameter 0 (%%p0), which is not allowed", name);
@@ -1885,13 +1992,16 @@ check_params(TERMTYPE2 *tp, const char *name, char *value, int extended)
 	    analyzed = popcount;
 	}
 	if (actual != analyzed && expected != analyzed) {
+#if NCURSES_XNAMES
 	    int user_cap = is_user_capability(name);
 	    if ((user_cap == analyzed) && using_extensions) {
 		;		/* ignore */
 	    } else if (user_cap >= 0) {
-		_nc_warning("tparm will use %d parameters for %s",
-			    analyzed, name);
-	    } else {
+		_nc_warning("tparm will use %d parameters for %s, expected %d",
+			    analyzed, name, user_cap);
+	    } else
+#endif
+	    {
 		_nc_warning("tparm analyzed %d parameters for %s, expected %d",
 			    analyzed, name, actual);
 	    }
@@ -2070,6 +2180,9 @@ check_1_infotocap(const char *name, NCURSES_CONST char *value, int count)
     char *result;
     char blob[NUM_PARM * 10];
     char *next = blob;
+    TParams expect;
+    TParams actual;
+    int nparam;
 
     *next++ = '\0';
     for (k = 1; k <= NUM_PARM; k++) {
@@ -2081,7 +2194,16 @@ check_1_infotocap(const char *name, NCURSES_CONST char *value, int count)
 	next += strlen(next) + 1;
     }
 
-    switch (tparm_type(name)) {
+    expect = tparm_type(name);
+    nparam = _nc_tparm_analyze(value, p_is_s, &ignored);
+    actual = guess_tparm_type(nparam, p_is_s);
+
+    if (expect != actual) {
+	_nc_warning("%s has mismatched parameters", name);
+	actual = Other;
+    }
+
+    switch (actual) {
     case Num_Str:
 	result = TPARM_2(value, numbers[1], strings[2]);
 	break;
@@ -2089,8 +2211,21 @@ check_1_infotocap(const char *name, NCURSES_CONST char *value, int count)
 	result = TPARM_3(value, numbers[1], strings[2], strings[3]);
 	break;
     case Numbers:
+#define myParam(n) numbers[n]
+	result = TIPARM_9(value,
+			  myParam(1),
+			  myParam(2),
+			  myParam(3),
+			  myParam(4),
+			  myParam(5),
+			  myParam(6),
+			  myParam(7),
+			  myParam(8),
+			  myParam(9));
+#undef myParam
+	break;
+    case Other:
     default:
-	(void) _nc_tparm_analyze(value, p_is_s, &ignored);
 #define myParam(n) (p_is_s[n - 1] != 0 ? ((TPARM_ARG) strings[n]) : numbers[n])
 	result = TPARM_9(value,
 			 myParam(1),
@@ -2102,6 +2237,7 @@ check_1_infotocap(const char *name, NCURSES_CONST char *value, int count)
 			 myParam(7),
 			 myParam(8),
 			 myParam(9));
+#undef myParam
 	break;
     }
     return strdup(result);
@@ -2232,18 +2368,17 @@ static void
 check_infotocap(TERMTYPE2 *tp, int i, const char *value)
 {
     const char *name = ExtStrname(tp, i, strnames);
-    int params = (((i < (int) SIZEOF(parametrized)) &&
-		   (i < STRCOUNT))
+    int params = ((i < (int) SIZEOF(parametrized))
 		  ? parametrized[i]
 		  : ((*value == 'k')
 		     ? 0
-		     : has_params(value)));
-    int to_char = 0;
+		     : has_params(value, FALSE)));
     char *ti_value;
     char *tc_value;
     bool embedded;
 
-    if ((ti_value = _nc_tic_expand(value, TRUE, to_char)) == ABSENT_STRING) {
+    assert(SIZEOF(parametrized) == STRCOUNT);
+    if (!VALID_STRING(value) || (ti_value = strdup(value)) == NULL) {
 	_nc_warning("tic-expansion of %s failed", name);
     } else if ((tc_value = _nc_infotocap(name, ti_value, params)) == ABSENT_STRING) {
 	_nc_warning("tic-conversion of %s failed", name);
@@ -2266,12 +2401,14 @@ check_infotocap(TERMTYPE2 *tp, int i, const char *value)
 	    if (strcmp(ti_check, tc_check)) {
 		if (first) {
 		    fprintf(stderr, "check_infotocap(%s)\n", name);
-		    fprintf(stderr, "...ti '%s'\n", ti_value);
-		    fprintf(stderr, "...tc '%s'\n", tc_value);
+		    fprintf(stderr, "...ti '%s'\n", _nc_visbuf2(0, ti_value));
+		    fprintf(stderr, "...tc '%s'\n", _nc_visbuf2(0, tc_value));
 		    first = FALSE;
 		}
 		_nc_warning("tparm-conversion of %s(%d) differs between\n\tterminfo %s\n\ttermcap  %s",
-			    name, count, ti_check, tc_check);
+			    name, count,
+			    _nc_visbuf2(0, ti_check),
+			    _nc_visbuf2(1, tc_check));
 	    }
 	    free(ti_check);
 	    free(tc_check);
@@ -2368,7 +2505,7 @@ similar_sgr(int num, char *a, char *b)
 		    ;
 		} else if (b[0] == '$'
 			   && b[1] == '<') {
-		    _nc_warning("Did not find delay %s", _nc_visbuf(b));
+		    _nc_warning("did not find delay %s", _nc_visbuf(b));
 		} else {
 		    _nc_warning("checking sgr(%s) %s\n\tcompare to %s\n\tunmatched %s",
 				sgr_names[num], _nc_visbuf2(1, base_a),
@@ -2406,22 +2543,29 @@ similar_sgr(int num, char *a, char *b)
     return ((num != 0) || (*a == 0));
 }
 
+static void
+check_tparm_err(int num)
+{
+    if (_nc_tparm_err)
+	_nc_warning("tparam error in sgr(%d): %s", num, sgr_names[num]);
+}
+
 static char *
 check_sgr(TERMTYPE2 *tp, char *zero, int num, char *cap, const char *name)
 {
     char *test;
 
     _nc_tparm_err = 0;
-    test = TPARM_9(set_attributes,
-		   num == 1,
-		   num == 2,
-		   num == 3,
-		   num == 4,
-		   num == 5,
-		   num == 6,
-		   num == 7,
-		   num == 8,
-		   num == 9);
+    test = TIPARM_9(set_attributes,
+		    num == 1,
+		    num == 2,
+		    num == 3,
+		    num == 4,
+		    num == 5,
+		    num == 6,
+		    num == 7,
+		    num == 8,
+		    num == 9);
     if (test != 0) {
 	if (PRESENT(cap)) {
 	    if (!similar_sgr(num, test, cap)) {
@@ -2436,8 +2580,7 @@ check_sgr(TERMTYPE2 *tp, char *zero, int num, char *cap, const char *name)
     } else if (PRESENT(cap)) {
 	_nc_warning("sgr(%d) missing, but %s present", num, name);
     }
-    if (_nc_tparm_err)
-	_nc_warning("stack error in sgr(%d) string", num);
+    check_tparm_err(num);
     return test;
 }
 
@@ -2556,7 +2699,7 @@ check_conflict(TERMTYPE2 *tp)
 		    check[k] = 1;
 		    if (first) {
 			if (!conflict) {
-			    _nc_warning("Conflicting key definitions (using the last)");
+			    _nc_warning("conflicting key definitions (using the last)");
 			    conflict = TRUE;
 			}
 			fprintf(stderr, "...");
@@ -2592,7 +2735,6 @@ check_conflict(TERMTYPE2 *tp)
 		{ NULL,   NULL },
 	    };
 	    /* *INDENT-ON* */
-
 	    /*
 	     * SVr4 curses defines the "xcurses" names listed above except for
 	     * the special cases in the "shifted" column.  When using these
@@ -2733,6 +2875,57 @@ check_sgr_param(TERMTYPE2 *tp, int code, const char *name, char *value)
     }
 }
 
+#if NCURSES_XNAMES
+static int
+standard_type(const char *name)
+{
+    int result = -1;
+    const struct name_table_entry *np;
+
+    if ((np = _nc_find_entry(name, _nc_get_hash_table(0))) != 0) {
+	result = np->nte_type;
+    }
+    return result;
+}
+
+static const char *
+name_of_type(int type)
+{
+    const char *result = "unknown";
+    switch (type) {
+    case BOOLEAN:
+	result = "boolean";
+	break;
+    case NUMBER:
+	result = "number";
+	break;
+    case STRING:
+	result = "string";
+	break;
+    }
+    return result;
+}
+
+static void
+check_user_capability_type(const char *name, int actual)
+{
+    if (lookup_user_capability(name) == 0) {
+	int expected = standard_type(name);
+	if (expected >= 0) {
+	    _nc_warning("expected %s to be %s, but actually %s",
+			name,
+			name_of_type(actual),
+			name_of_type(expected)
+		);
+	} else if (*name != 'k') {
+	    _nc_warning("undocumented %s capability %s",
+			name_of_type(actual),
+			name);
+	}
+    }
+}
+#endif
+
 /* other sanity-checks (things that we don't want in the normal
  * logic that reads a terminfo entry)
  */
@@ -2752,7 +2945,7 @@ check_termtype(TERMTYPE2 *tp, bool literal)
 	     * check for consistent number of parameters.
 	     */
 	    if (j >= SIZEOF(parametrized) ||
-		is_user_capability(name) > 0 ||
+		is_user_capability(name) >= 0 ||
 		parametrized[j] > 0) {
 		check_params(tp, name, a, (j >= STRCOUNT));
 	    }
@@ -2762,6 +2955,18 @@ check_termtype(TERMTYPE2 *tp, bool literal)
 	    }
 	}
     }
+#if NCURSES_XNAMES
+    /* in extended mode, verify that each extension is expected type */
+    for_each_ext_boolean(j, tp) {
+	check_user_capability_type(ExtBoolname(tp, (int) j, strnames), BOOLEAN);
+    }
+    for_each_ext_number(j, tp) {
+	check_user_capability_type(ExtNumname(tp, (int) j, strnames), NUMBER);
+    }
+    for_each_ext_string(j, tp) {
+	check_user_capability_type(ExtStrname(tp, (int) j, strnames), STRING);
+    }
+#endif /* NCURSES_XNAMES */
 
     check_acs(tp);
     check_colors(tp);
@@ -2769,6 +2974,12 @@ check_termtype(TERMTYPE2 *tp, bool literal)
     check_keypad(tp);
     check_printer(tp);
     check_screen(tp);
+
+    /*
+     * These are probably both or none.
+     */
+    PAIRED(parm_index, parm_rindex);
+    PAIRED(parm_ich, parm_dch);
 
     /*
      * These may be mismatched because the terminal description relies on
@@ -2801,10 +3012,9 @@ check_termtype(TERMTYPE2 *tp, bool literal)
 	if (PRESENT(exit_attribute_mode)) {
 	    zero = strdup(CHECK_SGR(0, exit_attribute_mode));
 	} else {
-	    zero = strdup(TPARM_9(set_attributes, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+	    zero = strdup(TIPARM_9(set_attributes, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 	}
-	if (_nc_tparm_err)
-	    _nc_warning("stack error in sgr(0) string");
+	check_tparm_err(0);
 
 	if (zero != 0) {
 	    CHECK_SGR(1, enter_standout_mode);
@@ -2885,7 +3095,7 @@ check_termtype(TERMTYPE2 *tp, bool literal)
      * ncurses handles it.
      */
     if ((PRESENT(enter_insert_mode) || PRESENT(exit_insert_mode))
-	&& PRESENT(parm_ich)) {
+	&& PRESENT(insert_character)) {
 	_nc_warning("non-curses applications may be confused by ich1 with smir/rmir");
     }
 

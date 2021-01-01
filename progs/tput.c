@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -50,7 +51,7 @@
 #include <transform.h>
 #include <tty_settings.h>
 
-MODULE_ID("$Id: tput.c,v 1.79 2018/06/30 15:56:01 Nicholas.Marriott Exp $")
+MODULE_ID("$Id: tput.c,v 1.84 2020/10/24 18:29:38 tom Exp $")
 
 #define PUTS(s)		fputs(s, stdout)
 
@@ -62,7 +63,7 @@ static bool is_reset = FALSE;
 static bool is_clear = FALSE;
 
 static void
-quit(int status, const char *fmt,...)
+quit(int status, const char *fmt, ...)
 {
     va_list argp;
 
@@ -230,7 +231,7 @@ tput_cmd(int fd, TTY * saved_settings, bool opt_x, int argc, char *argv[])
 	     * representations
 	     */
 
-	    for (k = 1; k < argc; k++) {
+	    for (k = 1; (k < argc) && (k < NUM_PARM); k++) {
 		char *tmp = 0;
 		strings[k] = argv[k];
 		numbers[k] = strtol(argv[k], &tmp, 0);
@@ -250,6 +251,21 @@ tput_cmd(int fd, TTY * saved_settings, bool opt_x, int argc, char *argv[])
 		s = TPARM_3(s, numbers[1], strings[2], strings[3]);
 		break;
 	    case Numbers:
+#define myParam(n) numbers[n]
+		s = TIPARM_9(s,
+			     myParam(1),
+			     myParam(2),
+			     myParam(3),
+			     myParam(4),
+			     myParam(5),
+			     myParam(6),
+			     myParam(7),
+			     myParam(8),
+			     myParam(9));
+#undef myParam
+		break;
+	    case Other:
+		/* FALLTHRU */
 	    default:
 		(void) _nc_tparm_analyze(s, p_is_s, &ignored);
 #define myParam(n) (p_is_s[n - 1] != 0 ? ((TPARM_ARG) strings[n]) : numbers[n])
@@ -263,6 +279,7 @@ tput_cmd(int fd, TTY * saved_settings, bool opt_x, int argc, char *argv[])
 			    myParam(7),
 			    myParam(8),
 			    myParam(9));
+#undef myParam
 		break;
 	    }
 	}

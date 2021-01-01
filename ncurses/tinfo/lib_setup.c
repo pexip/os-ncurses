@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -48,7 +49,7 @@
 #include <locale.h>
 #endif
 
-MODULE_ID("$Id: lib_setup.c,v 1.196 2018/09/08 20:14:26 tom Exp $")
+MODULE_ID("$Id: lib_setup.c,v 1.212 2020/09/09 19:43:00 juergen Exp $")
 
 /****************************************************************************
  *
@@ -173,16 +174,20 @@ NCURSES_EXPORT(int)
 NCURSES_SP_NAME(set_tabsize) (NCURSES_SP_DCLx int value)
 {
     int code = OK;
-#if USE_REENTRANT
-    if (SP_PARM) {
-	SP_PARM->_TABSIZE = value;
-    } else {
+    if (value <= 0) {
 	code = ERR;
-    }
+    } else {
+#if USE_REENTRANT
+	if (SP_PARM) {
+	    SP_PARM->_TABSIZE = value;
+	} else {
+	    code = ERR;
+	}
 #else
-    (void) SP_PARM;
-    TABSIZE = value;
+	(void) SP_PARM;
+	TABSIZE = value;
 #endif
+    }
     return code;
 }
 
@@ -300,11 +305,19 @@ _nc_get_screensize(SCREEN *sp,
     bool useEnv = _nc_prescreen.use_env;
     bool useTioctl = _nc_prescreen.use_tioctl;
 
+#ifdef EXP_WIN32_DRIVER
+    /* If we are here, then Windows console is used in terminfo mode.
+       We need to figure out the size using the console API
+     */
+    _nc_console_size(linep, colp);
+    T(("screen size: winconsole lines = %d columns = %d", *linep, *colp));
+#else
     /* figure out the size of the screen */
     T(("screen size: terminfo lines = %d columns = %d", lines, columns));
 
     *linep = (int) lines;
     *colp = (int) columns;
+#endif
 
 #if NCURSES_SP_FUNCS
     if (sp) {
@@ -446,23 +459,24 @@ _nc_update_screensize(SCREEN *sp)
     int old_cols = columns;
 #endif
 
-    TINFO_GET_SIZE(sp, sp->_term, &new_lines, &new_cols);
-
-    /*
-     * See is_term_resized() and resizeterm().
-     * We're doing it this way because those functions belong to the upper
-     * ncurses library, while this resides in the lower terminfo library.
-     */
-    if (sp != 0 && sp->_resize != 0) {
-	if ((new_lines != old_lines) || (new_cols != old_cols)) {
-	    sp->_resize(NCURSES_SP_ARGx new_lines, new_cols);
-	} else if (sp->_sig_winch && (sp->_ungetch != 0)) {
-	    sp->_ungetch(SP_PARM, KEY_RESIZE);	/* so application can know this */
+    if (sp != 0) {
+	TINFO_GET_SIZE(sp, sp->_term, &new_lines, &new_cols);
+	/*
+	 * See is_term_resized() and resizeterm().
+	 * We're doing it this way because those functions belong to the upper
+	 * ncurses library, while this resides in the lower terminfo library.
+	 */
+	if (sp->_resize != 0) {
+	    if ((new_lines != old_lines) || (new_cols != old_cols)) {
+		sp->_resize(NCURSES_SP_ARGx new_lines, new_cols);
+	    } else if (sp->_sig_winch && (sp->_ungetch != 0)) {
+		sp->_ungetch(SP_PARM, KEY_RESIZE);	/* so application can know this */
+	    }
+	    sp->_sig_winch = FALSE;
 	}
-	sp->_sig_winch = FALSE;
     }
 }
-#endif
+#endif /* USE_SIZECHANGE */
 
 /****************************************************************************
  *
@@ -560,7 +574,7 @@ NCURSES_EXPORT(int)
 _nc_unicode_locale(void)
 {
     int result = 0;
-#if defined(_WIN32) && USE_WIDEC_SUPPORT
+#if defined(_NC_WINDOWS) && USE_WIDEC_SUPPORT
     result = 1;
 #elif HAVE_LANGINFO_CODESET
     char *env = nl_langinfo(CODESET);
@@ -628,6 +642,7 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 #endif
     TERMINAL *termp;
     SCREEN *sp = 0;
+    char *myname;
     int code = ERR;
 
     START_TRACE();
@@ -648,22 +663,31 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 
     if (tname == 0) {
 	tname = getenv("TERM");
-	if (tname == 0 || *tname == '\0') {
-#ifdef USE_TERM_DRIVER
+#if defined(EXP_WIN32_DRIVER)
+	if (!VALID_TERM_ENV(tname, NO_TERMINAL)) {
+	    T(("Failure with TERM=%s", NonNull(tname)));
+	    ret_error0(TGETENT_ERR, "TERM environment variable not set.\n");
+	}
+#elif defined(USE_TERM_DRIVER)
+	if (!NonEmpty(tname))
 	    tname = "unknown";
 #else
+	if (!NonEmpty(tname)) {
+	    T(("Failure with TERM=%s", NonNull(tname)));
 	    ret_error0(TGETENT_ERR, "TERM environment variable not set.\n");
-#endif
 	}
+#endif
     }
+    myname = strdup(tname);
 
-    if (strlen(tname) > MAX_NAME_SIZE) {
+    if (strlen(myname) > MAX_NAME_SIZE) {
 	ret_error(TGETENT_ERR,
 		  "TERM environment must be <= %d characters.\n",
-		  MAX_NAME_SIZE);
+		  MAX_NAME_SIZE,
+		  free(myname));
     }
 
-    T(("your terminal name is %s", tname));
+    T(("your terminal name is %s", myname));
 
     /*
      * Allow output redirection.  This is what SVr3 does.  If stdout is
@@ -671,6 +695,10 @@ TINFO_SETUP_TERM(TERMINAL **tp,
      */
     if (Filedes == STDOUT_FILENO && !NC_ISATTY(Filedes))
 	Filedes = STDERR_FILENO;
+#if defined(EXP_WIN32_DRIVER)
+    if (Filedes != STDERR_FILENO && NC_ISATTY(Filedes))
+	_setmode(Filedes, _O_BINARY);
+#endif
 
     /*
      * Check if we have already initialized to use this terminal.  If so, we
@@ -692,8 +720,8 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 	&& (termp != 0)
 	&& termp->Filedes == Filedes
 	&& termp->_termname != 0
-	&& !strcmp(termp->_termname, tname)
-	&& _nc_name_match(TerminalType(termp).term_names, tname, "|")) {
+	&& !strcmp(termp->_termname, myname)
+	&& _nc_name_match(TerminalType(termp).term_names, myname, "|")) {
 	T(("reusing existing terminal information and mode-settings"));
 	code = OK;
 #ifdef USE_TERM_DRIVER
@@ -711,8 +739,9 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 	termp = typeCalloc(TERMINAL, 1);
 #endif
 	if (termp == 0) {
-	    ret_error0(TGETENT_ERR,
-		       "Not enough memory to create terminal structure.\n");
+	    ret_error1(TGETENT_ERR,
+		       "Not enough memory to create terminal structure.\n",
+		       myname, free(myname));
 	}
 #if HAVE_SYSCONF
 	{
@@ -735,27 +764,31 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 #ifdef USE_TERM_DRIVER
 	INIT_TERM_DRIVER();
 	TCB = (TERMINAL_CONTROL_BLOCK *) termp;
-	code = _nc_globals.term_driver(TCB, tname, errret);
+	code = _nc_globals.term_driver(TCB, myname, errret);
 	if (code == OK) {
 	    termp->Filedes = (short) Filedes;
-	    termp->_termname = strdup(tname);
+	    termp->_termname = strdup(myname);
 	} else {
-	    ret_error0(errret ? *errret : TGETENT_ERR,
-		       "Could not find any driver to handle this terminal.\n");
+	    ret_error1(errret ? *errret : TGETENT_ERR,
+		       "Could not find any driver to handle terminal.\n",
+		       myname, free(myname));
 	}
 #else
 #if NCURSES_USE_DATABASE || NCURSES_USE_TERMCAP
-	status = _nc_setup_tinfo(tname, &TerminalType(termp));
+	status = _nc_setup_tinfo(myname, &TerminalType(termp));
+	T(("_nc_setup_tinfo returns %d", status));
 #else
+	T(("no database available"));
 	status = TGETENT_NO;
 #endif
 
 	/* try fallback list if entry on disk */
 	if (status != TGETENT_YES) {
-	    const TERMTYPE2 *fallback = _nc_fallback2(tname);
+	    const TERMTYPE2 *fallback = _nc_fallback2(myname);
 
 	    if (fallback) {
-		TerminalType(termp) = *fallback;
+		T(("found fallback entry"));
+		_nc_copy_termtype2(&(TerminalType(termp)), fallback);
 		status = TGETENT_YES;
 	    }
 	}
@@ -763,9 +796,13 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 	if (status != TGETENT_YES) {
 	    del_curterm(termp);
 	    if (status == TGETENT_ERR) {
+		free(myname);
 		ret_error0(status, "terminals database is inaccessible\n");
 	    } else if (status == TGETENT_NO) {
-		ret_error1(status, "unknown terminal type.\n", tname);
+		ret_error1(status, "unknown terminal type.\n",
+			   myname, free(myname));
+	    } else {
+		ret_error0(status, "unexpected return-code\n");
 	    }
 	}
 #if NCURSES_EXT_NUMBERS
@@ -776,7 +813,7 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 #endif
 
 	termp->Filedes = (short) Filedes;
-	termp->_termname = strdup(tname);
+	termp->_termname = strdup(myname);
 
 	set_curterm(termp);
 
@@ -823,15 +860,19 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 	if ((VALID_STRING(cursor_address)
 	     || (VALID_STRING(cursor_down) && VALID_STRING(cursor_home)))
 	    && VALID_STRING(clear_screen)) {
-	    ret_error1(TGETENT_YES, "terminal is not really generic.\n", tname);
+	    ret_error1(TGETENT_YES, "terminal is not really generic.\n",
+		       myname, free(myname));
 	} else {
 	    del_curterm(termp);
-	    ret_error1(TGETENT_NO, "I need something more specific.\n", tname);
+	    ret_error1(TGETENT_NO, "I need something more specific.\n",
+		       myname, free(myname));
 	}
     } else if (hard_copy) {
-	ret_error1(TGETENT_YES, "I can't handle hardcopy terminals.\n", tname);
+	ret_error1(TGETENT_YES, "I can't handle hardcopy terminals.\n",
+		   myname, free(myname));
     }
 #endif
+    free(myname);
     returnCode(code);
 }
 

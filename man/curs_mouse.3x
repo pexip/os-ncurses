@@ -1,6 +1,7 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 1998-2015,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,7 +28,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_mouse.3x,v 1.49 2018/07/28 22:19:56 tom Exp $
+.\" $Id: curs_mouse.3x,v 1.53 2020/10/17 23:25:08 tom Exp $
 .ie \n(.g .ds `` \(lq
 .el       .ds `` ``
 .ie \n(.g .ds '' \(rq
@@ -75,21 +76,20 @@
 .fi
 .PP
 \fBbool has_mouse(void);\fR
-.br
+.sp
 \fBint getmouse(MEVENT *\fP\fIevent\fP\fB);\fR
 .br
 \fBint ungetmouse(MEVENT *\fP\fIevent\fP\fB);\fR
-.br
+.sp
 \fBmmask_t mousemask(mmask_t \fP\fInewmask\fP\fB, mmask_t *\fP\fIoldmask\fP\fB);\fR
-.br
+.sp
 \fBbool wenclose(const WINDOW *\fP\fIwin\fP\fB, int \fP\fIy\fP\fB, int \fP\fIx\fP\fB);\fR
-.br
+.sp
 \fBbool mouse_trafo(int* \fP\fIpY\fP\fB, int* \fP\fIpX\fP\fB, bool \fP\fIto_screen\fP\fB);\fR
 .br
-\fBbool wmouse_trafo(const WINDOW* \fP\fIwin\fP\fB, int* \fP\fIpY\fP\fB, int* \fP\fIpX\fP\fB,\fR
-.br
-	\fBbool \fP\fIto_screen\fP\fB);\fR
-.br
+\fBbool wmouse_trafo(const WINDOW* \fP\fIwin\fP\fB,\fR
+                  \fBint* \fP\fIpY\fP\fB, int* \fP\fIpX\fP\fB, bool \fP\fIto_screen\fP\fB);\fR
+.sp
 \fBint mouseinterval(int \fP\fIerval\fP\fB);\fR
 .br
 .SH DESCRIPTION
@@ -370,6 +370,12 @@ corresponds to private mode 1000 of xterm:
 \\E[?1000%?%p1%{1}%=%th%el%;
 .RE
 .PP
+The mouse driver also recognizes a newer xterm private mode 1006, e.g.,
+.PP
+.RS 3
+\\E[?1006;1000%?%p1%{1}%=%th%el%;
+.RE
+.PP
 The \fIz\fP member in the event structure is not presently used.
 It is intended
 for use with touch screens (which may be pressure-sensitive) or with
@@ -388,7 +394,7 @@ report sequence will appear in the string read.
 .PP
 Mouse events under xterm will not be detected correctly in a window with
 its keypad bit off, since they are interpreted as a variety of function key.
-Your terminfo description should have \fBkmous\fR set to "\\E[M"
+Your terminfo description should have \fBkmous\fR set to \*(``\\E[M\*(''
 (the beginning of the response from xterm for mouse clicks).
 Other values for \fBkmous\fR are permitted,
 but under the same assumption,
@@ -396,9 +402,13 @@ i.e., it is the beginning of the response.
 .PP
 Because there are no standard terminal responses that would serve to identify
 terminals which support the xterm mouse protocol, \fBncurses\fR assumes that
-if your $TERM environment variable contains "xterm",
-or \fBkmous\fR is defined in
-the terminal description, then the terminal may send mouse events.
+if \fBkmous\fR is defined in the terminal description,
+or if the terminal description's primary name or aliases
+contain the string \*(``xterm\*('',
+then the terminal may send mouse events.
+The \fBkmous\fP capability is checked first,
+allowing the use of newer xterm mouse protocols
+such as xterm's private mode 1006.
 .SH SEE ALSO
 \fBcurses\fR(3X),
 \fBcurs_kernel\fR(3X),

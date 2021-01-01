@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2007-2013,2017 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 2007-2013,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,7 +30,7 @@
 /*
  * Author: Thomas E. Dickey - 2007
  *
- * $Id: dots_mvcur.c,v 1.19 2017/11/24 19:26:31 tom Exp $
+ * $Id: dots_mvcur.c,v 1.26 2020/05/29 23:04:02 tom Exp $
  *
  * A simple demo of the terminfo interface, and mvcur.
  */
@@ -79,9 +80,10 @@ cleanup(void)
     outs(clear_screen);
     outs(cursor_normal);
 
-    printf("\n\n%ld total cells, rate %.2f/sec\n",
-	   total_chars,
-	   ((double) (total_chars) / (double) (time((time_t *) 0) - started)));
+    fflush(stdout);
+    fprintf(stderr, "\n\n%ld total cells, rate %.2f/sec\n",
+	    total_chars,
+	    ((double) (total_chars) / (double) (time((time_t *) 0) - started)));
 }
 
 static void
@@ -123,6 +125,7 @@ usage(void)
 #endif
 	," -f       use tigetnum rather than <term.h> mapping"
 	," -m SIZE  set margin (default: 2)"
+	," -r SECS  self-interrupt/exit after specified number of seconds"
 	," -s MSECS delay 1% of the time (default: 1 msecs)"
     };
     size_t n;
@@ -138,19 +141,25 @@ main(int argc GCC_UNUSED,
      char *argv[]GCC_UNUSED)
 {
     int x0 = 1, y0 = 1;
-    int x, y, z, p;
+    int ch;
     double r;
     double c;
     SCREEN *sp;
     int my_colors;
     int f_option = 0;
     int m_option = 2;
+    int r_option = 0;
     int s_option = 1;
+    size_t need;
+    char *my_env;
 
-    while ((x = getopt(argc, argv, "T:efm:s:")) != -1) {
-	switch (x) {
+    while ((ch = getopt(argc, argv, "T:efm:r:s:")) != -1) {
+	switch (ch) {
 	case 'T':
-	    putenv(strcat(strcpy(malloc(6 + strlen(optarg)), "TERM="), optarg));
+	    need = 6 + strlen(optarg);
+	    my_env = malloc(need);
+	    _nc_SPRINTF(my_env, _nc_SLIMIT(need) "TERM=%s", optarg);
+	    putenv(my_env);
 	    break;
 #if HAVE_USE_ENV
 	case 'e':
@@ -163,6 +172,9 @@ main(int argc GCC_UNUSED,
 	case 'm':
 	    m_option = atoi(optarg);
 	    break;
+	case 'r':
+	    r_option = atoi(optarg);
+	    break;
 	case 's':
 	    s_option = atoi(optarg);
 	    break;
@@ -172,6 +184,7 @@ main(int argc GCC_UNUSED,
 	}
     }
 
+    SetupAlarm(r_option);
     InitAndCatch((sp = newterm((char *) 0, stdout, stdin)), onsig);
     refresh();			/* needed with Solaris curses to cancel endwin */
 
@@ -200,9 +213,9 @@ main(int argc GCC_UNUSED,
     started = time((time_t *) 0);
 
     while (!interrupted) {
-	x = (int) (c * ranf()) + m_option;
-	y = (int) (r * ranf()) + m_option;
-	p = (ranf() > 0.9) ? '*' : ' ';
+	int x = (int) (c * ranf()) + m_option;
+	int y = (int) (r * ranf()) + m_option;
+	int p = (ranf() > 0.9) ? '*' : ' ';
 
 	if (mvcur(y0, x0, y, x) != ERR) {
 	    x0 = x;
@@ -210,12 +223,13 @@ main(int argc GCC_UNUSED,
 	}
 
 	if (my_colors > 0) {
-	    z = (int) (ranf() * my_colors);
+	    int z = (int) (ranf() * my_colors);
 	    if (ranf() > 0.01) {
 		tputs(tparm2(set_a_foreground, z), 1, outc);
 	    } else {
 		tputs(tparm2(set_a_background, z), 1, outc);
-		napms(s_option);
+		if (s_option)
+		    napms(s_option);
 	    }
 	} else if (VALID_STRING(exit_attribute_mode)
 		   && VALID_STRING(enter_reverse_mode)) {
@@ -223,7 +237,8 @@ main(int argc GCC_UNUSED,
 		outs((ranf() > 0.6)
 		     ? enter_reverse_mode
 		     : exit_attribute_mode);
-		napms(s_option);
+		if (s_option)
+		    napms(s_option);
 	    }
 	}
 	outc(p);

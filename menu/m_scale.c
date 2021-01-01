@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2004,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +38,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_scale.c,v 1.10 2010/01/23 21:20:10 tom Exp $")
+MODULE_ID("$Id: m_scale.c,v 1.12 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -50,7 +51,7 @@ MODULE_ID("$Id: m_scale.c,v 1.10 2010/01/23 21:20:10 tom Exp $")
 |                    E_BAD_ARGUMENT        - invalid menu pointer
 |                    E_NOT_CONNECTED       - no items are connected to menu
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 scale_menu(const MENU * menu, int *rows, int *cols)
 {
   T((T_CALLED("scale_menu(%p,%p,%p)"),

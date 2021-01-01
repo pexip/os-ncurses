@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,7 +40,7 @@
 #include "termsort.c"		/* this C file is generated */
 #include <parametrized.h>	/* so is this */
 
-MODULE_ID("$Id: dump_entry.c,v 1.168 2017/09/02 21:01:54 tom Exp $")
+MODULE_ID("$Id: dump_entry.c,v 1.180 2020/11/14 18:18:13 tom Exp $")
 
 #define DISCARD(string) string = ABSENT_STRING
 #define PRINTF (void) printf
@@ -94,7 +95,7 @@ static int indent = 8;
 #define OBSOLETE(n) (n[0] == 'O' && n[1] == 'T')
 #endif
 
-#define isObsolete(f,n) ((f == F_TERMINFO || f == F_VARIABLE) && OBSOLETE(n))
+#define isObsolete(f,n) ((f == F_TERMINFO || f == F_VARIABLE) && (sortmode != S_VARIABLE) && OBSOLETE(n))
 
 #if NCURSES_XNAMES
 #define BoolIndirect(j) ((j >= BOOLCOUNT) ? (j) : ((sortmode == S_NOSORT) ? j : bool_indirect[j]))
@@ -530,7 +531,7 @@ fill_spaces(const char *src)
 	for (s = d = 0; src[s] != '\0'; ++s) {
 	    if (src[s] == ' ') {
 		if (pass) {
-		    strcpy(&result[d], fill);
+		    _nc_STRCPY(&result[d], fill, need + 1 - d);
 		    d += (int) size;
 		} else {
 		    need += size;
@@ -718,8 +719,35 @@ indent_DYN(DYNBUF * buffer, int level)
 	strncpy_DYN(buffer, "\t", (size_t) 1);
 }
 
+/*
+ * Check if the current line which was begun consists only of a tab and the
+ * given leading text.
+ */
+static bool
+leading_DYN(DYNBUF * buffer, const char *leading)
+{
+    bool result = FALSE;
+    size_t need = strlen(leading);
+    if (buffer->used > need) {
+	need = buffer->used - need;
+	if (!strcmp(buffer->text + need, leading)) {
+	    result = TRUE;
+	    while (--need != 0) {
+		if (buffer->text[need] == '\n') {
+		    break;
+		}
+		if (buffer->text[need] != '\t') {
+		    result = FALSE;
+		    break;
+		}
+	    }
+	}
+    }
+    return result;
+}
+
 bool
-has_params(const char *src)
+has_params(const char *src, bool formatting)
 {
     bool result = FALSE;
     int len = (int) strlen(src);
@@ -737,7 +765,11 @@ has_params(const char *src)
 	}
     }
     if (!ifthen) {
-	result = ((len > 50) && params);
+	if (formatting) {
+	    result = ((len > 50) && params);
+	} else {
+	    result = params;
+	}
     }
     return result;
 }
@@ -746,7 +778,7 @@ static char *
 fmt_complex(TERMTYPE2 *tterm, const char *capability, char *src, int level)
 {
     bool percent = FALSE;
-    bool params = has_params(src);
+    bool params = has_params(src, TRUE);
 
     while (*src != '\0') {
 	switch (*src) {
@@ -773,7 +805,7 @@ fmt_complex(TERMTYPE2 *tterm, const char *capability, char *src, int level)
 		    strncpy_DYN(&tmpbuf, "%", (size_t) 1);
 		    strncpy_DYN(&tmpbuf, src, (size_t) 1);
 		    src++;
-		    params = has_params(src);
+		    params = has_params(src, TRUE);
 		    if (!params && *src != '\0' && *src != '%') {
 			strncpy_DYN(&tmpbuf, "\n", (size_t) 1);
 			indent_DYN(&tmpbuf, level + 1);
@@ -821,7 +853,7 @@ fmt_complex(TERMTYPE2 *tterm, const char *capability, char *src, int level)
 	    }
 	    break;
 	case 'p':
-	    if (percent && params) {
+	    if (percent && params && !leading_DYN(&tmpbuf, "%")) {
 		tmpbuf.text[tmpbuf.used - 1] = '\n';
 		indent_DYN(&tmpbuf, level + 1);
 		strncpy_DYN(&tmpbuf, "%", (size_t) 1);
@@ -1078,12 +1110,11 @@ fmt_entry(TERMTYPE2 *tterm,
 		WRAP_CONCAT;
 	    } else if (TcOutput()) {
 		char *srccap = _nc_tic_expand(capability, TRUE, numbers);
-		int params = (((i < (int) SIZEOF(parametrized)) &&
-			       (i < STRCOUNT))
+		int params = ((i < (int) SIZEOF(parametrized))
 			      ? parametrized[i]
 			      : ((*srccap == 'k')
 				 ? 0
-				 : has_params(srccap)));
+				 : has_params(srccap, FALSE)));
 		char *cv = _nc_infotocap(name, srccap, params);
 
 		if (cv == 0) {
@@ -1098,7 +1129,7 @@ fmt_entry(TERMTYPE2 *tterm,
 			char *s = srccap, *d = buffer;
 			int need = 3 + (int) strlen(name);
 			while ((*d = *s++) != 0) {
-			    if ((d - buffer + 1) >= (int) sizeof(buffer)) {
+			    if ((d - buffer + 2) >= (int) sizeof(buffer)) {
 				fprintf(stderr,
 					"%s: value for %s is too long\n",
 					_nc_progname,
@@ -1110,7 +1141,8 @@ fmt_entry(TERMTYPE2 *tterm,
 				*d++ = '\\';
 				*d = ':';
 			    } else if (*d == '\\') {
-				*++d = *s++;
+				if ((*++d = *s++) == '\0')
+				    break;
 			    }
 			    d++;
 			    *d = '\0';
@@ -1370,7 +1402,7 @@ one_one_mapping(const char *mapping)
 
     if (VALID_STRING(mapping)) {
 	int n = 0;
-	while (mapping[n] != '\0') {
+	while (mapping[n] != '\0' && mapping[n + 1] != '\0') {
 	    if (isLine(mapping[n]) &&
 		mapping[n] != mapping[n + 1]) {
 		result = FALSE;

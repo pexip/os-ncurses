@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2010,2013 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2010,2013 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: frm_data.c,v 1.16 2013/08/24 22:44:05 tom Exp $")
+MODULE_ID("$Id: frm_data.c,v 1.18 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
@@ -44,7 +45,7 @@ MODULE_ID("$Id: frm_data.c,v 1.16 2013/08/24 22:44:05 tom Exp $")
 |   Return Values :  TRUE   - there are off-screen data behind
 |                    FALSE  - there are no off-screen data behind
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(bool)
+FORM_EXPORT(bool)
 data_behind(const FORM *form)
 {
   bool result = FALSE;
@@ -131,7 +132,7 @@ Only_Padding(WINDOW *w, int len, int pad)
 |   Return Values :  TRUE   - there are off-screen data ahead
 |                    FALSE  - there are no off-screen data ahead
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(bool)
+FORM_EXPORT(bool)
 data_ahead(const FORM *form)
 {
   bool result = FALSE;

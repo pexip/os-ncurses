@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2012,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +38,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_driver.c,v 1.32 2016/03/26 21:51:52 tom Exp $")
+MODULE_ID("$Id: m_driver.c,v 1.35 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /* Macros */
 
@@ -114,7 +115,7 @@ Is_Sub_String(
 |   Return Values :  E_OK        - an item matching the pattern was found
 |                    E_NO_MATCH  - nothing found
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 _nc_Match_Next_Character_In_Item_Name
 (MENU * menu, int ch, ITEM ** item)
 {
@@ -138,7 +139,7 @@ _nc_Match_Next_Character_In_Item_Name
       /* we artificially position one item back, because in the do...while
          loop we start with the next item. This means, that with a new
          pattern search we always start the scan with the actual item. If
-         we do a NEXT_PATTERN oder PREV_PATTERN search, we start with the
+         we do a NEXT_PATTERN or PREV_PATTERN search, we start with the
          one after or before the actual item. */
       if (--idx < 0)
 	idx = menu->nitems - 1;
@@ -208,7 +209,7 @@ _nc_Match_Next_Character_In_Item_Name
 |                    E_BAD_STATE     - menu is in user hook routine
 |                    E_NOT_POSTED    - menu is not posted
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 menu_driver(MENU * menu, int c)
 {
 #define NAVIGATE(dir) \
