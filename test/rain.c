@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2014,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,7 +27,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: rain.c,v 1.49 2018/06/23 21:35:06 tom Exp $
+ * $Id: rain.c,v 1.52 2020/08/29 16:22:03 juergen Exp $
  */
 #include <test.priv.h>
 #include <popup_msg.h>
@@ -78,7 +79,7 @@ safe_wgetch(WINDOW *w, void *data GCC_UNUSED)
 static void
 onsig(int n GCC_UNUSED)
 {
-    exit_curses();
+    stop_curses();
     ExitProgram(EXIT_FAILURE);
 }
 
@@ -227,7 +228,7 @@ draw_drop(void *arg)
      * Find myself in the list of threads so we can count the number of loops.
      */
     for (mystats = 0; mystats < MAX_THREADS; ++mystats) {
-#if defined(_WIN32) && !defined(__WINPTHREADS_VERSION)
+#if defined(_NC_WINDOWS) && !defined(__WINPTHREADS_VERSION)
 	if (drop_threads[mystats].myself.p == pthread_self().p)
 #else
 	if (drop_threads[mystats].myself == pthread_self())
@@ -437,7 +438,7 @@ main(int argc, char *argv[])
 	}
 	napms(50);
     }
-    exit_curses();
+    stop_curses();
 #ifdef USE_PTHREADS
     printf("Counts per thread:\n");
     for (j = 0; j < MAX_THREADS; ++j)

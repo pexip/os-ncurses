@@ -1,6 +1,7 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 1998-2015,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,7 +28,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_util.3x,v 1.54 2018/07/28 22:08:59 tom Exp $
+.\" $Id: curs_util.3x,v 1.59 2020/10/24 09:15:57 tom Exp $
 .TH curs_util 3X ""
 .ie \n(.g .ds `` \(lq
 .el       .ds `` ``
@@ -57,27 +58,27 @@
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .sp
-\fBchar *unctrl(chtype c);\fR
+\fBconst char *unctrl(chtype \fP\fIc\fP\fB);\fR
 .br
-\fBwchar_t *wunctrl(cchar_t *c);\fR
+\fBwchar_t *wunctrl(cchar_t *\fP\fIc\fP\fB);\fR
+.sp
+\fBconst char *keyname(int \fP\fIc\fP\fB);\fR
 .br
-\fBchar *keyname(int c);\fR
-.br
-\fBchar *key_name(wchar_t w);\fR
-.br
+\fBconst char *key_name(wchar_t \fP\fIw\fP\fB);\fR
+.sp
 \fBvoid filter(void);\fR
 .br
 \fBvoid nofilter(void);\fR
+.sp
+\fBvoid use_env(bool \fP\fIf\fP\fB);\fR
 .br
-\fBvoid use_env(bool f);\fR
+\fBvoid use_tioctl(bool \fP\fIf\fP\fB);\fR
+.sp
+\fBint putwin(WINDOW *\fP\fIwin\fP\fB, FILE *\fP\fIfilep\fP\fB);\fR
 .br
-\fBvoid use_tioctl(bool f);\fR
-.br
-\fBint putwin(WINDOW *win, FILE *filep);\fR
-.br
-\fBWINDOW *getwin(FILE *filep);\fR
-.br
-\fBint delay_output(int ms);\fR
+\fBWINDOW *getwin(FILE *\fP\fIfilep\fP\fB);\fR
+.sp
+\fBint delay_output(int \fP\fIms\fP\fB);\fR
 .br
 \fBint flushinp(void);\fR
 .br
@@ -114,8 +115,8 @@ Values above 256 may be the names of the names of function keys.
 .bP
 Otherwise (if there is no corresponding name) the function returns null,
 to denote an error.
-X/Open also lists an "UNKNOWN KEY" return value, which some implementations
-return rather than null.
+X/Open also lists an \*(``UNKNOWN KEY\*('' return value,
+which some implementations return rather than null.
 .LP
 The corresponding \fBkey_name\fR returns a character string corresponding
 to the wide-character value \fIw\fR.
@@ -289,7 +290,7 @@ The \fBkeyname\fP function may return the names of user-defined
 string capabilities which are defined in the terminfo entry via the \fB\-x\fP
 option of \fB@TIC@\fP.
 This implementation automatically assigns at run-time keycodes to
-user-defined strings which begin with "k".
+user-defined strings which begin with \*(``k\*(''.
 The keycodes start at KEY_MAX, but are not guaranteed to be
 the same value for different runs because user-defined codes are
 merged from all terminal descriptions which have been loaded.
@@ -343,7 +344,7 @@ the parameter is a 7-bit US\-ASCII code.
 This is the case that X/Open Curses documented.
 .bP
 the parameter is in the range 128\-159, i.e., a C1 control code.
-If \fBuse_legacy_coding\fP has been called with a \fB2\fP parameter,
+If \fBuse_legacy_coding\fP(3X) has been called with a \fB2\fP parameter,
 \fBunctrl\fP returns the parameter, i.e., a one-character string with
 the parameter as the first character.
 Otherwise, it returns \*(``~@\*('', \*(``~A\*('', etc.,
@@ -368,14 +369,14 @@ Or they may ignore C1 controls and treat all of the upper-128 codes as
 printable.
 This implementation uses 8 bits but does not modify the string to reflect
 locale.
-The \fBuse_legacy_coding\fP function allows the caller to
+The \fBuse_legacy_coding\fP(3X) function allows the caller to
 change the output of \fBunctrl\fP.
 .PP
 Likewise, the \fBmeta\fP(3X) function allows the caller to change the
 output of \fBkeyname\fP, i.e.,
 it determines whether to use the \*(``M\-\*('' prefix
 for \*(``meta\*('' keys (codes in the range 128 to 255).
-Both \fBuse_legacy_coding\fP and \fBmeta\fP succeed only after
+Both \fBuse_legacy_coding\fP(3X) and \fBmeta\fP(3X) succeed only after
 curses is initialized.
 X/Open Curses does not document the treatment of codes 128 to 159.
 When treating them as \*(``meta\*('' keys

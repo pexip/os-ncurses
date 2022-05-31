@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2012,2015 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2012,2015 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +38,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: frm_req_name.c,v 1.19 2015/04/04 17:11:46 tom Exp $")
+MODULE_ID("$Id: frm_req_name.c,v 1.21 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 #define DATA(s) { s }
 
@@ -119,7 +120,7 @@ static const char request_names[MAX_FORM_COMMAND - MIN_FORM_COMMAND + 1][13] =
 |   Return Values :  Pointer to name      - on success
 |                    NULL                 - on invalid request code
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(const char *)
+FORM_EXPORT(const char *)
 form_request_name(int request)
 {
   T((T_CALLED("form_request_name(%d)"), request));
@@ -142,7 +143,7 @@ form_request_name(int request)
 |   Return Values :  Request Id       - on success
 |                    E_NO_MATCH       - request not found
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 form_request_by_name(const char *str)
 {
   /* because the table is so small, it doesn't really hurt

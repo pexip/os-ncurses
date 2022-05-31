@@ -1,6 +1,7 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2010,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 1998-2006,2010 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,24 +28,28 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: form_field_attributes.3x,v 1.13 2018/07/28 21:34:06 tom Exp $
+.\" $Id: form_field_attributes.3x,v 1.18 2020/10/18 00:14:20 tom Exp $
 .TH form_field_attributes 3X ""
+.ie \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie \n(.g .ds '' \(rq
+.el       .ds '' ''
 .SH NAME
 \fBform_field_attributes\fR \- color and attribute control for form fields
 .SH SYNOPSIS
 \fB#include <form.h>\fR
+.sp
+\fBint set_field_fore(FIELD *\fP\fIfield\fP\fB, chtype \fP\fIattr\fP\fB);\fP
 .br
-int set_field_fore(FIELD *field, chtype attr);
+\fBchtype field_fore(const FIELD *\fP\fIfield\fP\fB);\fP
+.sp
+\fBint set_field_back(FIELD *\fP\fIfield\fP\fB, chtype \fP\fIattr\fP\fB);\fP
 .br
-chtype field_fore(const FIELD *field);
+\fBchtype field_back(const FIELD *\fP\fIfield\fP\fB);\fP
+.sp
+\fBint set_field_pad(FIELD *\fP\fIfield\fP\fB, int \fP\fIpad\fP\fB);\fP
 .br
-int set_field_back(FIELD *field, chtype attr);
-.br
-chtype field_back(const FIELD *field);
-.br
-int set_field_pad(FIELD *field, int pad);
-.br
-int field_pad(const FIELD *field);
+\fBint field_pad(const FIELD *\fP\fIfield\fP\fB);\fP
 .br
 .SH DESCRIPTION
 The function \fBset_field_fore\fR sets the foreground attribute of
@@ -74,10 +79,10 @@ The routine succeeded.
 Routine detected an incorrect or out-of-range argument.
 .TP 5
 .B E_SYSTEM_ERROR
-System error occurred (see \fBerrno\fR).
+System error occurred (see \fBerrno\fR(3)).
 .
 .SH SEE ALSO
-\fBcurses\fR(3X) and related pages whose names begin "form_" for detailed
+\fBcurses\fR(3X) and related pages whose names begin \*(``form_\*('' for detailed
 descriptions of the entry points.
 .SH NOTES
 The header file \fB<form.h>\fR automatically includes the header file

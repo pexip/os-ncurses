@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2002-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2002-2014,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -36,7 +37,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_vid_attr.c,v 1.26 2018/03/03 22:03:18 tom Exp $")
+MODULE_ID("$Id: lib_vid_attr.c,v 1.30 2020/05/27 23:54:31 tom Exp $")
 
 #define doPut(mode) \
 	TPUTS_TRACE(#mode); \
@@ -190,16 +191,16 @@ NCURSES_SP_NAME(vid_puts) (NCURSES_SP_DCLx
 	if (turn_on || turn_off) {
 	    TPUTS_TRACE("set_attributes");
 	    NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				    TPARM_9(set_attributes,
-					    (newmode & A_STANDOUT) != 0,
-					    (newmode & A_UNDERLINE) != 0,
-					    (newmode & A_REVERSE) != 0,
-					    (newmode & A_BLINK) != 0,
-					    (newmode & A_DIM) != 0,
-					    (newmode & A_BOLD) != 0,
-					    (newmode & A_INVIS) != 0,
-					    (newmode & A_PROTECT) != 0,
-					    (newmode & A_ALTCHARSET) != 0),
+				    TIPARM_9(set_attributes,
+					       (newmode & A_STANDOUT) != 0,
+					       (newmode & A_UNDERLINE) != 0,
+					       (newmode & A_REVERSE) != 0,
+					       (newmode & A_BLINK) != 0,
+					       (newmode & A_DIM) != 0,
+					       (newmode & A_BOLD) != 0,
+					       (newmode & A_INVIS) != 0,
+					       (newmode & A_PROTECT) != 0,
+					       (newmode & A_ALTCHARSET) != 0),
 				    1, outc);
 	    previous_attr &= ALL_BUT_COLOR;
 	    previous_pair = 0;
@@ -254,7 +255,7 @@ NCURSES_SP_NAME(vid_puts) (NCURSES_SP_DCLx
 #if USE_ITALIC
 	TurnOn(A_ITALIC,	enter_italics_mode);
 #endif
-#if USE_WIDEC_SUPPORT
+#if USE_WIDEC_SUPPORT && defined(enter_horizontal_hl_mode)
 	TurnOn(A_HORIZONTAL,	enter_horizontal_hl_mode);
 	TurnOn(A_LEFT,		enter_left_hl_mode);
 	TurnOn(A_LOW,		enter_low_hl_mode);
@@ -263,7 +264,6 @@ NCURSES_SP_NAME(vid_puts) (NCURSES_SP_DCLx
 	TurnOn(A_VERTICAL,	enter_vertical_hl_mode);
 #endif
 	/* *INDENT-ON* */
-
     }
 
     if (reverse)
@@ -338,6 +338,7 @@ NCURSES_SP_NAME(term_attrs) (NCURSES_SP_DCL0)
     if (SP_PARM) {
 	attrs = NCURSES_SP_NAME(termattrs) (NCURSES_SP_ARG);
 
+#if USE_WIDEC_SUPPORT && defined(enter_horizontal_hl_mode)
 	/* these are only supported for wide-character mode */
 	if (enter_horizontal_hl_mode)
 	    attrs |= WA_HORIZONTAL;
@@ -351,6 +352,7 @@ NCURSES_SP_NAME(term_attrs) (NCURSES_SP_DCL0)
 	    attrs |= WA_TOP;
 	if (enter_vertical_hl_mode)
 	    attrs |= WA_VERTICAL;
+#endif
     }
 
     returnAttr(attrs);

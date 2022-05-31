@@ -1,6 +1,7 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,7 +28,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: form.3x,v 1.31 2018/07/28 21:34:56 tom Exp $
+.\" $Id: form.3x,v 1.35 2020/03/28 19:06:28 tom Exp $
 .TH form 3X ""
 .ie \n(.g .ds `` \(lq
 .el       .ds `` ``
@@ -162,7 +163,7 @@ unpost_form	\fBform_post\fR(3X)
 .TE
 .SH RETURN VALUE
 Routines that return pointers return \fBNULL\fR on error,
-and set errno to the corresponding error-code returned by functions
+and set \fBerrno\fP to the corresponding error-code returned by functions
 returning an integer.
 Routines that return
 an integer return one of the following error codes:
@@ -198,7 +199,7 @@ The form is already posted.
 The form driver could not process the request.
 .TP 5
 .B E_SYSTEM_ERROR
-System error occurred (see \fBerrno\fR).
+System error occurred (see \fBerrno\fR(3)).
 .TP 5
 .B E_UNKNOWN_COMMAND
 The form driver code saw an unknown request code.
@@ -234,7 +235,7 @@ Juergen Pfeifer.
 Manual pages and adaptation for ncurses by Eric
 S. Raymond.
 .SH SEE ALSO
-\fBcurses\fR(3X) and related pages whose names begin "form_" for detailed
+\fBcurses\fR(3X) and related pages whose names begin \*(``form_\*('' for detailed
 descriptions of the entry points.
 .PP
 This describes \fBncurses\fR

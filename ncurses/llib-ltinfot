@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2013-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 2013-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -195,6 +196,21 @@ struct name_table_entry const *_nc_find_type_entry(
 		NCURSES_BOOL termcap)
 		{ return(*(struct name_table_entry const **)0); }
 
+#undef _nc_find_user_entry
+struct user_table_entry const *_nc_find_user_entry(
+		const char *string)
+		{ return(*(struct user_table_entry const **)0); }
+
+/* ./comp_userdefs.c */
+
+#undef _nc_get_userdefs_table
+const struct user_table_entry *_nc_get_userdefs_table(void)
+		{ return(*(const struct user_table_entry **)0); }
+
+#undef _nc_get_hash_user
+const HashData *_nc_get_hash_user(void)
+		{ return(*(const HashData **)0); }
+
 /* ./tinfo/db_iterator.c */
 
 #undef _nc_tic_dir
@@ -251,6 +267,11 @@ void	_nc_free_entries(
 
 #undef _nc_leaks_tinfo
 void	_nc_leaks_tinfo(void)
+		{ /* void */ }
+
+#undef exit_terminfo
+void	exit_terminfo(
+		int	code)
 		{ /* void */ }
 
 /* ./fallback.c */
@@ -958,6 +979,13 @@ char	*tiparm(
 		...)
 		{ return(*(char **)0); }
 
+#undef _nc_tiparm
+char	*_nc_tiparm(
+		int	expected, 
+		const char *string, 
+		...)
+		{ return(*(char **)0); }
+
 /* ./tinfo/lib_tputs.c */
 
 #undef PC
@@ -1083,6 +1111,11 @@ void	_nc_count_outchars(
 		long	increment)
 		{ /* void */ }
 
+#undef curses_trace
+unsigned curses_trace(
+		unsigned tracelevel)
+		{ return(*(unsigned *)0); }
+
 #undef trace
 void	trace(
 		const unsigned int tracelevel)
@@ -1143,6 +1176,13 @@ SCREEN	*_nc_retrace_sp(
 WINDOW	*_nc_retrace_win(
 		WINDOW	*code)
 		{ return(*(WINDOW **)0); }
+
+#undef _nc_fmt_funcptr
+char	*_nc_fmt_funcptr(
+		char	*target, 
+		const char *source, 
+		size_t	size)
+		{ return(*(char **)0); }
 
 #undef _nc_use_tracef
 int	_nc_use_tracef(

@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2009,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +38,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_new.c,v 1.21 2010/01/23 21:20:11 tom Exp $")
+MODULE_ID("$Id: m_new.c,v 1.23 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -50,7 +51,7 @@ MODULE_ID("$Id: m_new.c,v 1.21 2010/01/23 21:20:11 tom Exp $")
 |
 |   Return Values :  NULL on error
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(MENU *)
+MENU_EXPORT(MENU *)
 NCURSES_SP_NAME(new_menu) (NCURSES_SP_DCLx ITEM ** items)
 {
   int err = E_SYSTEM_ERROR;
@@ -101,7 +102,7 @@ NCURSES_SP_NAME(new_menu) (NCURSES_SP_DCLx ITEM ** items)
 |   Return Values :  NULL on error
 +--------------------------------------------------------------------------*/
 #if NCURSES_SP_FUNCS
-NCURSES_EXPORT(MENU *)
+MENU_EXPORT(MENU *)
 new_menu(ITEM ** items)
 {
   return NCURSES_SP_NAME(new_menu) (CURRENT_SCREEN, items);
@@ -119,7 +120,7 @@ new_menu(ITEM ** items)
 |                    E_BAD_ARGUMENT     - Invalid menu pointer passed
 |                    E_POSTED           - Menu is already posted
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 free_menu(MENU * menu)
 {
   T((T_CALLED("free_menu(%p)"), (void *)menu));

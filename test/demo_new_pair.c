@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2017,2018 Free Software Foundation, Inc.                   *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2017 Free Software Foundation, Inc.                            *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,7 +27,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: demo_new_pair.c,v 1.19 2018/05/12 14:30:04 tom Exp $
+ * $Id: demo_new_pair.c,v 1.21 2020/02/02 23:34:34 tom Exp $
  *
  * Demonstrate the alloc_pair() function.
  */
@@ -336,7 +337,7 @@ main(int argc, char *argv[])
 	total_cells += 1 + (use_wide ? 1 : 0);
 	++current;
     }
-    exit_curses();
+    stop_curses();
     fclose(output);
 
     printf("%.1f cells/second\n",

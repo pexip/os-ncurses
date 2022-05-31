@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -47,7 +48,7 @@
 
 #include <ctype.h>
 
-MODULE_ID("$Id: lib_trace.c,v 1.87 2018/06/24 00:06:37 tom Exp $")
+MODULE_ID("$Id: lib_trace.c,v 1.97 2020/08/29 16:22:03 juergen Exp $")
 
 NCURSES_EXPORT_VAR(unsigned) _nc_tracing = 0; /* always define this */
 
@@ -91,14 +92,18 @@ NCURSES_EXPORT_VAR(long) _nc_outchars = 0;
 #define MyPath		_nc_globals.trace_fname
 #define MyLevel		_nc_globals.trace_level
 #define MyNested	_nc_globals.nested_tracef
+#endif /* TRACE */
 
-NCURSES_EXPORT(void)
-trace(const unsigned int tracelevel)
+NCURSES_EXPORT(unsigned)
+curses_trace(unsigned tracelevel)
 {
+    unsigned result;
+#if defined(TRACE)
+    result = _nc_tracing;
     if ((MyFP == 0) && tracelevel) {
 	MyInit = TRUE;
 	if (MyFD >= 0) {
-	    MyFP = fdopen(MyFD, "wb");
+	    MyFP = fdopen(MyFD, BIN_W);
 	} else {
 	    if (MyPath[0] == '\0') {
 		size_t size = sizeof(MyPath) - 12;
@@ -115,7 +120,7 @@ trace(const unsigned int tracelevel)
 	    }
 	    if (_nc_access(MyPath, W_OK) < 0
 		|| (MyFD = open(MyPath, O_CREAT | O_EXCL | O_RDWR, 0600)) < 0
-		|| (MyFP = fdopen(MyFD, "wb")) == 0) {
+		|| (MyFP = fdopen(MyFD, BIN_W)) == 0) {
 		;		/* EMPTY */
 	    }
 	}
@@ -146,6 +151,18 @@ trace(const unsigned int tracelevel)
 	_nc_tracing = tracelevel;
 	_tracef("tracelevel=%#x", tracelevel);
     }
+#else
+    (void) tracelevel;
+    result = 0;
+#endif
+    return result;
+}
+
+#if defined(TRACE)
+NCURSES_EXPORT(void)
+trace(const unsigned int tracelevel)
+{
+    curses_trace(tracelevel);
 }
 
 static void
@@ -196,7 +213,7 @@ _nc_va_tracef(const char *fmt, va_list ap)
 # if USE_WEAK_SYMBOLS
 	if ((pthread_self))
 # endif
-#ifdef _WIN32
+#ifdef _NC_WINDOWS
 	    fprintf(fp, "%#lx:", (long) (intptr_t) pthread_self().p);
 #else
 	    fprintf(fp, "%#lx:", (long) (intptr_t) pthread_self());
@@ -219,7 +236,7 @@ _nc_va_tracef(const char *fmt, va_list ap)
 }
 
 NCURSES_EXPORT(void)
-_tracef(const char *fmt,...)
+_tracef(const char *fmt, ...)
 {
     va_list ap;
 
@@ -308,6 +325,39 @@ _nc_retrace_win(WINDOW *code)
     return code;
 }
 
+NCURSES_EXPORT(char *)
+_nc_fmt_funcptr(char *target, const char *source, size_t size)
+{
+    size_t n;
+    char *dst = target;
+    bool leading = TRUE;
+
+    union {
+	int value;
+	char bytes[sizeof(int)];
+    } byteorder;
+
+    byteorder.value = 0x1234;
+
+    *dst++ = '0';
+    *dst++ = 'x';
+
+    for (n = 0; n < size; ++n) {
+	unsigned ch = ((byteorder.bytes[0] == 0x34)
+		       ? UChar(source[size - n - 1])
+		       : UChar(source[n]));
+	if (ch != 0 || (n + 1) >= size)
+	    leading = FALSE;
+	if (!leading) {
+	    _nc_SPRINTF(dst, _nc_SLIMIT(TR_FUNC_LEN - (size_t) (dst - target))
+			"%02x", ch & 0xff);
+	    dst += 2;
+	}
+    }
+    *dst = '\0';
+    return target;
+}
+
 #if USE_REENTRANT
 /*
  * Check if the given trace-mask is enabled.
@@ -343,7 +393,7 @@ _nc_use_tracef(unsigned mask)
  * the tracef mutex.
  */
 NCURSES_EXPORT(void)
-_nc_locked_tracef(const char *fmt,...)
+_nc_locked_tracef(const char *fmt, ...)
 {
     va_list ap;
 

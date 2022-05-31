@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2010,2012 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2010,2012 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: frm_def.c,v 1.26 2012/03/11 00:37:16 tom Exp $")
+MODULE_ID("$Id: frm_def.c,v 1.28 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /* this can't be readonly */
 static FORM default_form =
@@ -61,7 +62,7 @@ static FORM default_form =
   NULL				/* fieldterm  */
 };
 
-NCURSES_EXPORT_VAR(FORM *) _nc_Default_Form = &default_form;
+FORM_EXPORT_VAR(FORM *) _nc_Default_Form = &default_form;
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
@@ -294,7 +295,7 @@ Associate_Fields(FORM *form, FIELD **fields)
 |                    E_CONNECTED     - a field is already connected
 |                    E_SYSTEM_ERROR  - not enough memory
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(FORM *)
+FORM_EXPORT(FORM *)
 NCURSES_SP_NAME(new_form) (NCURSES_SP_DCLx FIELD **fields)
 {
   int err = E_SYSTEM_ERROR;
@@ -343,7 +344,7 @@ NCURSES_SP_NAME(new_form) (NCURSES_SP_DCLx FIELD **fields)
 |                    E_SYSTEM_ERROR  - not enough memory
 +--------------------------------------------------------------------------*/
 #if NCURSES_SP_FUNCS
-NCURSES_EXPORT(FORM *)
+FORM_EXPORT(FORM *)
 new_form(FIELD **fields)
 {
   return NCURSES_SP_NAME(new_form) (CURRENT_SCREEN, fields);
@@ -360,7 +361,7 @@ new_form(FIELD **fields)
 |                    E_BAD_ARGUMENT - invalid form pointer
 |                    E_POSTED       - form is posted
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 free_form(FORM *form)
 {
   T((T_CALLED("free_form(%p)"), (void *)form));
@@ -391,7 +392,7 @@ free_form(FORM *form)
 |                    E_POSTED        - form is posted
 |                    E_SYSTEM_ERROR  - not enough memory
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 set_form_fields(FORM *form, FIELD **fields)
 {
   FIELD **old;
@@ -422,7 +423,7 @@ set_form_fields(FORM *form, FIELD **fields)
 |
 |   Return Values :  Pointer to field array
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(FIELD **)
+FORM_EXPORT(FIELD **)
 form_fields(const FORM *form)
 {
   T((T_CALLED("form_field(%p)"), (const void *)form));
@@ -437,7 +438,7 @@ form_fields(const FORM *form)
 |
 |   Return Values :  Number of fields, -1 if none are defined
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 field_count(const FORM *form)
 {
   T((T_CALLED("field_count(%p)"), (const void *)form));

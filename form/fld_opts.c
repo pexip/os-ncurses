@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2004,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fld_opts.c,v 1.12 2010/01/23 21:14:36 tom Exp $")
+MODULE_ID("$Id: fld_opts.c,v 1.14 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*----------------------------------------------------------------------------
   Field-Options manipulation routines
@@ -50,7 +51,7 @@ MODULE_ID("$Id: fld_opts.c,v 1.12 2010/01/23 21:14:36 tom Exp $")
 |                    E_BAD_ARGUMENT  - invalid options
 |                    E_SYSTEM_ERROR  - system error
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 set_field_opts(FIELD *field, Field_Options opts)
 {
   int res = E_BAD_ARGUMENT;
@@ -71,7 +72,7 @@ set_field_opts(FIELD *field, Field_Options opts)
 |
 |   Return Values :  The options.
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(Field_Options)
+FORM_EXPORT(Field_Options)
 field_opts(const FIELD *field)
 {
   T((T_CALLED("field_opts(%p)"), (const void *)field));
@@ -91,7 +92,7 @@ field_opts(const FIELD *field)
 |                    E_BAD_ARGUMENT  - invalid options
 |                    E_SYSTEM_ERROR  - system error
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 field_opts_on(FIELD *field, Field_Options opts)
 {
   int res = E_BAD_ARGUMENT;
@@ -119,7 +120,7 @@ field_opts_on(FIELD *field, Field_Options opts)
 |                    E_BAD_ARGUMENT  - invalid options
 |                    E_SYSTEM_ERROR  - system error
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 field_opts_off(FIELD *field, Field_Options opts)
 {
   int res = E_BAD_ARGUMENT;

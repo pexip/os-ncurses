@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2004,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fld_type.c,v 1.16 2010/01/23 21:14:36 tom Exp $")
+MODULE_ID("$Id: fld_type.c,v 1.18 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
@@ -45,7 +46,7 @@ MODULE_ID("$Id: fld_type.c,v 1.16 2010/01/23 21:14:36 tom Exp $")
 |   Return Values :  E_OK           - success
 |                    E_SYSTEM_ERROR - system error
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 set_field_type(FIELD *field, FIELDTYPE *type,...)
 {
   va_list ap;
@@ -87,7 +88,7 @@ set_field_type(FIELD *field, FIELDTYPE *type,...)
 |
 |   Return Values :  Pointer to fieldtype of NULL if none is defined.
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(FIELDTYPE *)
+FORM_EXPORT(FIELDTYPE *)
 field_type(const FIELD *field)
 {
   T((T_CALLED("field_type(%p)"), (const void *)field));

@@ -1,6 +1,7 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,10 +28,14 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_getch.3x,v 1.53 2018/07/28 22:15:59 tom Exp $
+.\" $Id: curs_getch.3x,v 1.56 2020/10/17 23:18:32 tom Exp $
 .TH curs_getch 3X ""
 .na
 .hy 0
+.ie \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie \n(.g .ds '' \(rq
+.el       .ds '' ''
 .de bP
 .ie n  .IP \(bu 4
 .el    .IP \(bu 2
@@ -50,12 +55,14 @@
 \fBint getch(void);\fR
 .br
 \fBint wgetch(WINDOW *\fP\fIwin);\fR
-.br
+.sp
 \fBint mvgetch(int \fP\fIy\fP\fB, int \fP\fIx\fP\fB);\fR
 .br
 \fBint mvwgetch(WINDOW *\fP\fIwin\fP\fB, int \fP\fIy\fP\fB, int \fP\fIx\fP\fB);\fR
-.br
+.sp
 \fBint ungetch(int \fP\fIch\fP\fB);\fR
+.sp
+/* extension */
 .br
 \fBint has_key(int \fP\fIch\fP\fB);\fR
 .br
@@ -143,7 +150,7 @@ it is necessary to enable \fBkeypad\fR for \fBgetch\fP to return these codes.
 Not all of these are necessarily supported on any particular terminal.
 .bP
 The naming convention may seem obscure, with some apparent
-misspellings (such as "RSUME" for "resume").
+misspellings (such as \*(``RSUME\*('' for \*(``resume\*('').
 The names correspond to the long terminfo capability names for the keys,
 and were defined long ago, in the 1980s.
 .PP
@@ -308,7 +315,7 @@ if the execution was interrupted by a signal (\fBerrno\fR will be set to
 \fBEINTR\fR).
 .RE
 .PP
-Functions with a "mv" prefix first perform a cursor movement using
+Functions with a \*(``mv\*('' prefix first perform a cursor movement using
 \fBwmove\fP, and return an error if the position is outside the window,
 or if the window pointer is null.
 .SH NOTES
@@ -337,10 +344,10 @@ the \fIEnter\fP key on the regular keyboard is already handled by
 the standard ASCII characters for carriage-return and line-feed,
 .bP
 depending on whether \fBnl\fP or \fBnonl\fP was called,
-pressing "Enter" on the regular keyboard may return either a carriage-return
-or line-feed, and finally
+pressing \*(``Enter\*('' on the regular keyboard
+may return either a carriage-return or line-feed, and finally
 .bP
-"Enter or send" is the standard description for this key.
+\*(``Enter or send\*('' is the standard description for this key.
 .PP
 When using \fBgetch\fR, \fBwgetch\fR, \fBmvgetch\fR, or
 \fBmvwgetch\fR, nocbreak mode (\fBnocbreak\fR) and echo mode
