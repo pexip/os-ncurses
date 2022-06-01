@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2001-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 2001-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -34,8 +35,9 @@
 */
 
 #include <curses.priv.h>
+#include <wchar.h>
 
-MODULE_ID("$Id: lib_cchar.c,v 1.31 2017/03/31 11:14:26 tom Exp $")
+MODULE_ID("$Id: lib_cchar.c,v 1.34 2020/07/11 22:55:08 tom Exp $")
 
 /* 
  * The SuSv2 description leaves some room for interpretation.  We'll assume wch
@@ -60,7 +62,7 @@ setcchar(cchar_t *wcval,
 
     set_extended_pair(opts, color_pair);
     if (wch == NULL
-	|| ((len = (unsigned) wcslen(wch)) > 1 && wcwidth(wch[0]) < 0)
+	|| ((len = (unsigned) wcslen(wch)) > 1 && _nc_wacs_width(wch[0]) < 0)
 	|| color_pair < 0) {
 	code = ERR;
     } else {
@@ -74,7 +76,7 @@ setcchar(cchar_t *wcval,
 	 * are only interested in adding non-spacing characters.
 	 */
 	for (i = 1; i < len; ++i) {
-	    if (wcwidth(wch[i]) != 0) {
+	    if (_nc_wacs_width(wch[i]) != 0) {
 		len = i;
 		break;
 	    }

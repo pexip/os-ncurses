@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2012,2015 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -34,12 +35,12 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fty_regex.c,v 1.27 2018/07/14 21:41:39 tom Exp $")
+MODULE_ID("$Id: fty_regex.c,v 1.30 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 #if HAVE_REGEX_H_FUNCS || HAVE_LIB_PCRE2	/* We prefer POSIX regex */
 
-#if HAVE_PCRE2_POSIX_H
-#include <pcre2-posix.h>
+#if HAVE_PCRE2POSIX_H
+#include <pcre2posix.h>
 #elif HAVE_PCREPOSIX_H
 #include <pcreposix.h>
 #else
@@ -339,14 +340,14 @@ static FIELDTYPE typeREGEXP =
 #endif
 };
 
-NCURSES_EXPORT_VAR(FIELDTYPE*) TYPE_REGEXP = &typeREGEXP;
+FORM_EXPORT_VAR(FIELDTYPE*) TYPE_REGEXP = &typeREGEXP;
 
 #if NCURSES_INTEROP_FUNCS
 /* The next routines are to simplify the use of ncurses from
    programming languages with restictions on interop with C level
    constructs (e.g. variable access or va_list + ellipsis constructs)
 */
-NCURSES_EXPORT(FIELDTYPE *)
+FORM_EXPORT(FIELDTYPE *)
 _nc_TYPE_REGEXP(void)
 {
   return TYPE_REGEXP;

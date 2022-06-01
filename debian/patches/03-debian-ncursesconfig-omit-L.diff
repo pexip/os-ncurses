@@ -4,21 +4,23 @@ Description: Omit -L part from ncurses6{w,}-config output
  since the library is installed in a directory in the default linker
  search path.
  .
- Upstream only omits the -L part if $libdir is /usr/lib.  Until there
- is a way to obtain the multiarch path without running
+ Upstream omits the -L part if $libdir is in a standard directory,
+ however the list of standard directories is determined at build time
+ and architecture dependent, breaking multiarch co-installability.
+ Until there is a way to obtain the multiarch path without running
  dpkg-architecture our patch is not upstreamable.
 Bug-Debian: https://bugs.debian.org/638281
 Bug-Debian: https://bugs.debian.org/745479
 Forwarded: not-needed
-Last-Update: 2018-06-03
+Last-Update: 2019-10-21
 
 ---
- misc/ncurses-config.in |    7 -------
- 1 file changed, 7 deletions(-)
+ misc/ncurses-config.in |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
 --- a/misc/ncurses-config.in
 +++ b/misc/ncurses-config.in
-@@ -40,7 +40,6 @@ exec_prefix="@exec_prefix@"
+@@ -41,7 +41,6 @@ exec_prefix="@exec_prefix@"
  
  bindir="@bindir@"
  includedir="@includedir@"
@@ -26,20 +28,16 @@ Last-Update: 2018-06-03
  datarootdir="@datarootdir@"
  datadir="@datadir@"
  mandir="@mandir@"
-@@ -111,12 +110,7 @@ while test $# -gt 0; do
- ENDECHO
- 		;;
- 	--libs)
--		if test "$libdir" = /usr/lib
--		then
- 			LIBDIR=
--		else
--			LIBDIR=-L$libdir
--		fi
- 		LIBS="@LIBS@ @PRIVATE_LIBS@"
- 		if test @TINFO_NAME@ = @LIB_NAME@ ; then
- 		sed -e 's,^[ ]*,,' -e 's, [ ]*, ,g' -e 's,[ ]*$,,' <<-ENDECHO
-@@ -155,7 +149,6 @@ ENDECHO
+@@ -113,7 +112,7 @@ do
+ 	-L*)
+ 		[ -d ${opt##-L} ] || continue
+ 		case ${opt##-L} in
+-		@LD_SEARCHPATH@) # skip standard libdir
++		*) # skip standard libdir
+ 			continue
+ 			;;
+ 		*)
+@@ -235,7 +234,6 @@ ENDECHO
  		echo $INCS
  		;;
  	--libdir)

@@ -1,5 +1,6 @@
 .\"***************************************************************************
-.\" Copyright (c) 2002-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 2002-2012,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,8 +27,12 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_inwstr.3x,v 1.11 2018/07/28 22:19:56 tom Exp $
+.\" $Id: curs_inwstr.3x,v 1.14 2020/10/17 23:22:11 tom Exp $
 .TH curs_inwstr 3X ""
+.ie \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie \n(.g .ds '' \(rq
+.el       .ds '' ''
 .SH NAME
 \fBinwstr\fR,
 \fBinnwstr\fR,
@@ -48,7 +53,7 @@
 \fBint winwstr(\fR\fBWINDOW *\fR\fIwin\fR\fB, wchar_t *\fR\fIwstr\fR\fB);\fR
 .br
 \fBint winnwstr(\fR\fBWINDOW *\fR\fIwin\fR\fB, wchar_t *\fR\fIwstr\fR\fB, int \fR\fIn\fR\fB);\fR
-.br
+.sp
 \fBint mvinwstr(\fR\fBint \fR\fIy\fR\fB, int \fR\fIx\fR\fB, wchar_t *\fR\fIwstr\fR\fB);\fR
 .br
 \fBint mvinnwstr(\fR\fBint \fR\fIy\fR\fB, int \fR\fIx\fR\fB, wchar_t *\fR\fIwstr\fR\fB, int \fR\fIn\fR\fB);\fR
@@ -92,7 +97,7 @@ routines return
 routines return the
 number of characters read into the string.
 .PP
-Functions with a "mv" prefix first perform a cursor movement using
+Functions with a \*(``mv\*('' prefix first perform a cursor movement using
 \fBwmove\fP, and return an error if the position is outside the window,
 or if the window pointer is null.
 .SH SEE ALSO

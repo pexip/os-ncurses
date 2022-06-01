@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2004,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +33,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fld_pad.c,v 1.10 2010/01/23 21:14:36 tom Exp $")
+MODULE_ID("$Id: fld_pad.c,v 1.12 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
@@ -45,7 +46,7 @@ MODULE_ID("$Id: fld_pad.c,v 1.10 2010/01/23 21:14:36 tom Exp $")
 |                    E_BAD_ARGUMENT - invalid field pointer or pad character
 |                    E_SYSTEM_ERROR - system error
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 set_field_pad(FIELD *field, int ch)
 {
   int res = E_BAD_ARGUMENT;
@@ -74,7 +75,7 @@ set_field_pad(FIELD *field, int ch)
 |
 |   Return Values :  The pad character.
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+FORM_EXPORT(int)
 field_pad(const FIELD *field)
 {
   T((T_CALLED("field_pad(%p)"), (const void *)field));

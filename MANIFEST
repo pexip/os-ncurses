@@ -94,7 +94,7 @@
 ./Ada95/samples/sample-curses_demo-mouse.ads
 ./Ada95/samples/sample-curses_demo.adb
 ./Ada95/samples/sample-curses_demo.ads
-./Ada95/samples/sample-explanation.adb
+./Ada95/samples/sample-explanation.adb_p
 ./Ada95/samples/sample-explanation.ads
 ./Ada95/samples/sample-form_demo-aux.adb
 ./Ada95/samples/sample-form_demo-aux.ads
@@ -123,6 +123,7 @@
 ./Ada95/samples/sample-text_io_demo.ads
 ./Ada95/samples/sample.adb
 ./Ada95/samples/sample.ads
+./Ada95/samples/split-path.awk
 ./Ada95/samples/status.adb
 ./Ada95/samples/status.ads
 ./Ada95/samples/tour.adb
@@ -133,7 +134,7 @@
 ./Ada95/src/c_varargs_to_ada.c
 ./Ada95/src/c_varargs_to_ada.h
 ./Ada95/src/library-cfg.sh
-./Ada95/src/library.gpr
+./Ada95/src/library.gpr.in
 ./Ada95/src/modules
 ./Ada95/src/ncurses_compat.c
 ./Ada95/src/terminal_interface-curses-aux.adb
@@ -234,7 +235,6 @@
 ./config.sub
 ./configure
 ./configure.in
-./convert_configure.pl
 ./dist.mk
 ./doc/hackguide.doc
 ./doc/html/Ada95.html
@@ -533,6 +533,7 @@
 ./form/llib-lformw
 ./form/modules
 ./include/Caps
+./include/Caps-ncurses
 ./include/Caps.aix4
 ./include/Caps.hpux11
 ./include/Caps.keys
@@ -545,6 +546,7 @@
 ./include/MKterm.h.awk.in
 ./include/Makefile.in
 ./include/capdefaults.c
+./include/curses.events
 ./include/curses.h.in
 ./include/curses.tail
 ./include/curses.wide
@@ -557,6 +559,7 @@
 ./include/nc_string.h
 ./include/nc_termios.h
 ./include/nc_tparm.h
+./include/nc_win32.h
 ./include/ncurses_cfg.hin
 ./include/ncurses_defs
 ./include/ncurses_dll.h.in
@@ -565,6 +568,7 @@
 ./include/termcap.h.in
 ./include/tic.h
 ./include/unctrl.h.in
+./include/win32_curses.h
 ./install-sh
 ./man/MKada_config.in
 ./man/MKncu_config.in
@@ -893,6 +897,7 @@
 ./ncurses/llib-ltinfow
 ./ncurses/modules
 ./ncurses/new_pair.h
+./ncurses/report_hashing.c
 ./ncurses/report_offsets.c
 ./ncurses/tinfo/MKcaptab.awk
 ./ncurses/tinfo/MKcaptab.sh
@@ -900,6 +905,7 @@
 ./ncurses/tinfo/MKfallback.sh
 ./ncurses/tinfo/MKkeys_list.sh
 ./ncurses/tinfo/MKnames.awk
+./ncurses/tinfo/MKuserdefs.sh
 ./ncurses/tinfo/README
 ./ncurses/tinfo/access.c
 ./ncurses/tinfo/add_tries.c
@@ -938,6 +944,8 @@
 ./ncurses/tinfo/lib_tparm.c
 ./ncurses/tinfo/lib_tputs.c
 ./ncurses/tinfo/lib_ttyflags.c
+./ncurses/tinfo/lib_win32con.c
+./ncurses/tinfo/lib_win32util.c
 ./ncurses/tinfo/make_hash.c
 ./ncurses/tinfo/make_keys.c
 ./ncurses/tinfo/name_match.c
@@ -994,6 +1002,7 @@
 ./ncurses/widechar/widechars.c
 ./ncurses/win32con/gettimeofday.c
 ./ncurses/win32con/wcwidth.c
+./ncurses/win32con/win32_driver.c
 ./ncurses/win32con/win_driver.c
 ./package/debian-mingw/changelog
 ./package/debian-mingw/compat
@@ -1095,6 +1104,7 @@
 ./test/cardfile.dat
 ./test/chgat.c
 ./test/clip_printw.c
+./test/color_content.c
 ./test/color_name.h
 ./test/color_set.c
 ./test/configure
@@ -1107,6 +1117,7 @@
 ./test/demo_menus.c
 ./test/demo_new_pair.c
 ./test/demo_panels.c
+./test/demo_tabs.c
 ./test/demo_termcap.c
 ./test/demo_terminfo.c
 ./test/ditto.c
@@ -1115,6 +1126,9 @@
 ./test/dots_mvcur.c
 ./test/dots_termcap.c
 ./test/dots_xcurses.c
+./test/dump_window.c
+./test/dump_window.h
+./test/dup_field.c
 ./test/echochar.c
 ./test/edit_field.c
 ./test/edit_field.h
@@ -1147,6 +1161,7 @@
 ./test/mini.xterm_48x48.xpm
 ./test/mk-test.awk
 ./test/modules
+./test/move_field.c
 ./test/movewindow.c
 ./test/ncurses.c
 ./test/ncurses_tst.hin
@@ -1175,6 +1190,7 @@
 ./test/package/mingw-ncurses-examples.spec
 ./test/package/ncurses-examples.spec
 ./test/padview.c
+./test/pair_content.c
 ./test/parse_rgb.h
 ./test/picsmap.c
 ./test/picsmap.h
@@ -1203,6 +1219,7 @@
 ./test/test_setupterm.c
 ./test/test_sgr.c
 ./test/test_termattrs.c
+./test/test_tparm.c
 ./test/test_vid_puts.c
 ./test/test_vidputs.c
 ./test/testaddch.c

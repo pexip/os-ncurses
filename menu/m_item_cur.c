@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2004,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +38,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_item_cur.c,v 1.18 2010/01/23 21:20:10 tom Exp $")
+MODULE_ID("$Id: m_item_cur.c,v 1.20 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -47,7 +48,7 @@ MODULE_ID("$Id: m_item_cur.c,v 1.18 2010/01/23 21:20:10 tom Exp $")
 |
 |   Return Values :  E_OK                - success
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 set_current_item(MENU * menu, ITEM * item)
 {
   T((T_CALLED("set_current_item(%p,%p)"), (void *)menu, (void *)item));
@@ -88,7 +89,7 @@ set_current_item(MENU * menu, ITEM * item)
 |
 |   Return Values :  Item pointer or NULL if failure
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(ITEM *)
+MENU_EXPORT(ITEM *)
 current_item(const MENU * menu)
 {
   T((T_CALLED("current_item(%p)"), (const void *)menu));
@@ -103,7 +104,7 @@ current_item(const MENU * menu)
 |
 |   Return Values :  The index or ERR if this is an invalid item pointer
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 item_index(const ITEM * item)
 {
   T((T_CALLED("item_index(%p)"), (const void *)item));

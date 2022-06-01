@@ -1,9 +1,9 @@
 Summary: example/test programs from ncurses
-%define AppProgram ncurses-examples
-%define AltProgram ncursest-examples
-%define AppVersion MAJOR.MINOR
-%define AppRelease YYYYMMDD
-# $Id: ncurses-examples.spec,v 1.12 2018/06/02 22:46:44 tom Exp $
+%global AppProgram ncurses-examples
+%global AltProgram ncursest-examples
+%global AppVersion MAJOR.MINOR
+%global AppRelease YYYYMMDD
+# $Id: ncurses-examples.spec,v 1.16 2019/11/23 21:11:34 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: %{AppRelease}
@@ -52,7 +52,7 @@ CONFIGURE_TOP=%{my_srcdir} \
 	--prefix=%{_prefix} \
 	--bindir=%{_bindir}/%{AppProgram} \
 	--datadir=%{_datadir}/%{AppProgram} \
-	--with-screen=ncursesw6 \
+	--with-screen=ncursesw6dev \
 	--disable-rpath-hack
 
 make
@@ -68,7 +68,7 @@ CONFIGURE_TOP=%{my_srcdir} \
 	--prefix=%{_prefix} \
 	--bindir=%{_bindir}/%{AltProgram} \
 	--datadir=%{_datadir}/%{AltProgram} \
-	--with-screen=ncursestw6 \
+	--with-screen=ncursestw6dev \
 	--disable-rpath-hack
 
 make
@@ -86,7 +86,12 @@ make install DESTDIR=$RPM_BUILD_ROOT
 popd
 
 %clean
-[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+if rm -rf $RPM_BUILD_ROOT; then
+  echo OK
+else
+  find $RPM_BUILD_ROOT -type f | grep -F -v /.nfs && exit 1
+fi
+exit 0
 
 %files -n %{AppProgram}
 %defattr(-,root,root)
@@ -100,6 +105,9 @@ popd
 
 %changelog
 # each patch should add its ChangeLog entries here
+
+* Sat Nov 16 2019 Thomas Dickey
+- modify clean-rule to work around Fedora NFS bugs.
 
 * Sat Nov 11 2017 Thomas Dickey
 - add example data-files

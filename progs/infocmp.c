@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,7 +43,7 @@
 
 #include <dump_entry.h>
 
-MODULE_ID("$Id: infocmp.c,v 1.143 2017/04/05 09:27:51 tom Exp $")
+MODULE_ID("$Id: infocmp.c,v 1.145 2020/07/07 20:28:47 tom Exp $")
 
 #define MAX_STRING	1024	/* maximum formatted string */
 
@@ -1193,8 +1194,9 @@ usage(void)
 	DATA("Options:")
     };
 #undef DATA
+    /* length is given here so the compiler can make everything readonly */
 #define DATA(s) s
-    static const char options[][45] =
+    static const char options[][46] =
     {
 	"  -0    print single-row"
 	,"  -1    print single-column"
@@ -1834,8 +1836,8 @@ main(int argc, char *argv[])
 				   tname[termcount]);
 
 		status = _nc_read_entry2(tname[termcount],
-					tfile[termcount],
-					&entries[termcount].tterm);
+					 tfile[termcount],
+					 &entries[termcount].tterm);
 	    }
 
 	    if (status <= 0) {

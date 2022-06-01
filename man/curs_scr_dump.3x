@@ -1,5 +1,6 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 1998-2010,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,8 +27,12 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_scr_dump.3x,v 1.13 2018/07/28 22:50:26 tom Exp $
+.\" $Id: curs_scr_dump.3x,v 1.16 2020/10/24 09:44:43 tom Exp $
 .TH curs_scr_dump 3X ""
+.ie \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie \n(.g .ds '' \(rq
+.el       .ds '' ''
 .de bP
 .ie n  .IP \(bu 4
 .el    .IP \(bu 2
@@ -44,13 +49,13 @@
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .sp
-\fBint scr_dump(const char *filename);\fR
+\fBint scr_dump(const char *\fP\fIfilename\fP\fB);\fR
 .br
-\fBint scr_restore(const char *filename);\fR
+\fBint scr_restore(const char *\fP\fIfilename\fP\fB);\fR
 .br
-\fBint scr_init(const char *filename);\fR
+\fBint scr_init(const char *\fP\fIfilename\fP\fB);\fR
 .br
-\fBint scr_set(const char *filename);\fR
+\fBint scr_set(const char *\fP\fIfilename\fP\fB);\fR
 .br
 .SH DESCRIPTION
 The \fBscr_dump\fR routine dumps the current contents
@@ -100,7 +105,7 @@ qualifiers).
 .PP
 The SVr4 docs merely say under \fBscr_init\fR that the dump data is also
 considered invalid "if the time-stamp of the tty is old" but do not define
-"old".
+\*(``old\*(''.
 .SH SEE ALSO
 \fBcurses\fR(3X),
 \fBcurs_initscr\fR(3X),

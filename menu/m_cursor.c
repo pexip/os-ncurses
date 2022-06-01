@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright 2020 Thomas E. Dickey                                          *
+ * Copyright 1998-2009,2010 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +38,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_cursor.c,v 1.22 2010/01/23 21:20:10 tom Exp $")
+MODULE_ID("$Id: m_cursor.c,v 1.24 2020/05/24 01:40:20 anonymous.maarten Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu
@@ -49,7 +50,7 @@ MODULE_ID("$Id: m_cursor.c,v 1.22 2010/01/23 21:20:10 tom Exp $")
 |                    E_BAD_ARGUMENT  - invalid menu
 |                    E_NOT_POSTED    - Menu is not posted
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 _nc_menu_cursor_pos(const MENU * menu, const ITEM * item, int *pY, int *pX)
 {
   if (!menu || !pX || !pY)
@@ -79,7 +80,7 @@ _nc_menu_cursor_pos(const MENU * menu, const ITEM * item, int *pY, int *pX)
 |                    E_BAD_ARGUMENT  - invalid menu
 |                    E_NOT_POSTED    - Menu is not posted
 +--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
+MENU_EXPORT(int)
 pos_menu_cursor(const MENU * menu)
 {
   WINDOW *win, *sub;

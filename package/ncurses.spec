@@ -1,14 +1,11 @@
 Summary: shared libraries for terminal handling
 Name: ncurses6
-Version: 6.1
-Release: 20181013
+Version: 6.2
+Release: 20201114
 License: X11
 Group: Development/Libraries
 Source: ncurses-%{version}-%{release}.tgz
 # URL: https://invisible-island.net/ncurses/
-
-%define CC_NORMAL -Wall -Wstrict-prototypes -Wmissing-prototypes -Wshadow -Wconversion
-%define CC_STRICT %{CC_NORMAL} -W -Wbad-function-cast -Wcast-align -Wcast-qual -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wwrite-strings -ansi -pedantic
 
 %global MY_ABI 6
 
@@ -30,11 +27,17 @@ This package is used for testing ABI %{MY_ABI}.
 %prep
 
 %global is_mandriva %(test -f /etc/mandriva-release && echo 1 || echo 0)
+%global is_fedora   %(test -f /usr/bin/dnf && echo 1 || echo 0)
+%global is_centos   %(test -f /etc/centos-release && echo 1 || echo 0)
 %global is_redhat   %(test -f /etc/redhat-release && echo 1 || echo 0)
+%global is_scilinux %(test -f /etc/sl-release && echo 1 || echo 0)
 %global is_suse     %(test -f /etc/SuSE-release && echo 1 || echo 0)
 
-# nor are debug-symbols
+%if %{is_redhat}
+# generate debug/debug-source packages.
+%else
 %define debug_package %{nil}
+%endif
 
 %if %{is_mandriva}
 %define _disable_ld_as_needed 1
@@ -44,7 +47,7 @@ This package is used for testing ABI %{MY_ABI}.
 %define _disable_ld_build_id 1
 %endif
 
-%if %{is_redhat}
+%if %{is_fedora} || %{is_scilinux} || %{is_centos}
 # workaround for toolset breakage in Fedora 28
 %define _test_relink --enable-relink
 %else
@@ -100,8 +103,6 @@ This package is used for testing ABI %{MY_ABI}.
 	--without-debug \\\
 	--without-normal
 
-CFLAGS="%{CC_NORMAL}" \
-RPATH_LIST=../lib:%{_libdir} \
 %configure %{CFG_OPTS}
 
 make
@@ -113,8 +114,22 @@ make install.libs install.progs
 rm -f test/ncurses
 ( cd test && make ncurses LOCAL_LIBDIR=%{_libdir} && mv ncurses $RPM_BUILD_ROOT/%{_bindir}/ncurses%{MY_ABI} )
 
+%if %{is_mandriva}
+# check this first because Mageia has the /etc/redhat-release file...
+%else
+%if %{is_fedora}
+%ldconfig_scriptlets libs
+%ldconfig_scriptlets c++-libs
+%endif
+%endif
+
 %clean
-rm -rf $RPM_BUILD_ROOT
+if rm -rf $RPM_BUILD_ROOT; then
+  echo OK
+else
+  find $RPM_BUILD_ROOT -type f | grep -F -v /.nfs && exit 1
+fi
+exit 0
 
 %files
 %defattr(-,root,root,-)
@@ -123,6 +138,14 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/*
 
 %changelog
+
+* Tue Dec 24 2019 Thomas Dickey
+- drop custom CC_NORMAL warning flags because setting CFLAGS interferes with
+  matching Fedora's PIE/PIC configuration.  Also, generate debug/debug-source
+  packages.
+
+* Sat Nov 16 2019 Thomas Dickey
+- modify clean-rule to work around Fedora NFS bugs.
 
 * Sat Aug 25 2018 Thomas E. Dickey
 - split spec-file into ncurses6 and ncursest6 to work around toolset breakage

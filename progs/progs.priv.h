@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2015,2017 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2015,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -30,7 +31,7 @@
  *  Author: Thomas E. Dickey                    1997-on                     *
  ****************************************************************************/
 /*
- * $Id: progs.priv.h,v 1.46 2017/10/09 00:30:38 tom Exp $
+ * $Id: progs.priv.h,v 1.52 2020/09/05 19:35:06 tom Exp $
  *
  *	progs.priv.h
  *
@@ -55,10 +56,6 @@
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#if HAVE_SYS_BSDTYPES_H
-#include <sys/bsdtypes.h>	/* needed for ISC */
 #endif
 
 #if HAVE_LIMITS_H
@@ -118,10 +115,20 @@ extern char *optarg;
 extern int optind;
 #endif /* HAVE_GETOPT_H */
 
+#undef _NC_WINDOWS
+#if (defined(_WIN32) || defined(_WIN64))
+#define _NC_WINDOWS 1
+#endif
+
 #define NCURSES_INTERNALS 1
 #define NCURSES_OPAQUE    0
 
 #include <curses.h>
+
+#if !(defined(NCURSES_WGETCH_EVENTS) && defined(NEED_KEY_EVENT))
+#undef KEY_EVENT		/* reduce compiler-warnings with Visual C++ */
+#endif
+
 #include <term_entry.h>
 #include <nc_termios.h>
 #include <tic.h>
@@ -129,10 +136,11 @@ extern int optind;
 
 #include <nc_string.h>
 #include <nc_alloc.h>
+
 #if HAVE_NC_FREEALL
 #undef ExitProgram
 #ifdef USE_LIBTINFO
-#define ExitProgram(code) _nc_free_tinfo(code)
+#define ExitProgram(code) exit_terminfo(code)
 #else
 #define ExitProgram(code) _nc_free_tic(code)
 #endif
@@ -153,6 +161,10 @@ extern int optind;
 #endif /* gcc workarounds */
 
 /* usually in <unistd.h> */
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
+#endif
+
 #ifndef STDOUT_FILENO
 #define STDOUT_FILENO 1
 #endif

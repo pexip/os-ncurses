@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2017,2018 Free Software Foundation, Inc.                   *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2017 Free Software Foundation, Inc.                            *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,13 +30,13 @@
 /*
  * Author: Thomas E. Dickey
  *
- * $Id: dots_xcurses.c,v 1.16 2018/06/23 21:35:06 tom Exp $
+ * $Id: dots_xcurses.c,v 1.24 2020/08/29 16:22:03 juergen Exp $
  *
  * A simple demo of the wide-curses interface used for comparison with termcap.
  */
 #include <test.priv.h>
 
-#if !defined(_WIN32)
+#if !defined(_NC_WINDOWS)
 #include <sys/time.h>
 #endif
 
@@ -64,9 +65,10 @@ cleanup(void)
 {
     endwin();
 
-    printf("\n\n%ld total cells, rate %.2f/sec\n",
-	   total_chars,
-	   ((double) (total_chars) / (double) (time((time_t *) 0) - started)));
+    fflush(stdout);
+    fprintf(stderr, "\n\n%ld total cells, rate %.2f/sec\n",
+	    total_chars,
+	    ((double) (total_chars) / (double) (time((time_t *) 0) - started)));
 }
 
 static void
@@ -123,6 +125,7 @@ usage(void)
 	," -e       allow environment $LINES / $COLUMNS"
 #endif
 	," -m SIZE  set margin (default: 2)"
+	," -r SECS  self-interrupt/exit after specified number of seconds"
 	," -s MSECS delay 1% of the time (default: 1 msecs)"
 #if HAVE_ALLOC_PAIR
 	," -x       use alloc_pair() rather than init_pair()"
@@ -139,22 +142,26 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-    int x, y, z, p;
     int fg, bg, ch;
     wchar_t wch[2];
-    int pair;
     double r;
     double c;
 #if HAVE_USE_DEFAULT_COLORS
     bool d_option = FALSE;
 #endif
     int m_option = 2;
+    int r_option = 0;
     int s_option = 1;
+    size_t need;
+    char *my_env;
 
-    while ((ch = getopt(argc, argv, "T:dem:s:x")) != -1) {
+    while ((ch = getopt(argc, argv, "T:dem:r:s:x")) != -1) {
 	switch (ch) {
 	case 'T':
-	    putenv(strcat(strcpy(malloc(6 + strlen(optarg)), "TERM="), optarg));
+	    need = 6 + strlen(optarg);
+	    my_env = malloc(need);
+	    _nc_SPRINTF(my_env, _nc_SLIMIT(need) "TERM=%s", optarg);
+	    putenv(my_env);
 	    break;
 #if HAVE_USE_DEFAULT_COLORS
 	case 'd':
@@ -168,6 +175,9 @@ main(int argc, char *argv[])
 #endif
 	case 'm':
 	    m_option = atoi(optarg);
+	    break;
+	case 'r':
+	    r_option = atoi(optarg);
 	    break;
 	case 's':
 	    s_option = atoi(optarg);
@@ -185,6 +195,7 @@ main(int argc, char *argv[])
 
     srand((unsigned) time(0));
 
+    SetupAlarm(r_option);
     InitAndCatch(initscr(), onsig);
     if (has_colors()) {
 	start_color();
@@ -200,6 +211,7 @@ main(int argc, char *argv[])
 	{
 	    for (fg = 0; fg < COLORS; fg++) {
 		for (bg = 0; bg < COLORS; bg++) {
+		    int pair;
 		    if (interrupted) {
 			cleanup();
 			ExitProgram(EXIT_FAILURE);
@@ -219,21 +231,21 @@ main(int argc, char *argv[])
 
     fg = COLOR_WHITE;
     bg = COLOR_BLACK;
-    pair = 0;
     wch[1] = 0;
     while (!interrupted) {
-	x = (int) (c * ranf()) + m_option;
-	y = (int) (r * ranf()) + m_option;
-	p = (ranf() > 0.9) ? '*' : ' ';
+	int x = (int) (c * ranf()) + m_option;
+	int y = (int) (r * ranf()) + m_option;
+	int p = (ranf() > 0.9) ? '*' : ' ';
 
 	move(y, x);
 	if (has_colors()) {
-	    z = (int) (ranf() * COLORS);
+	    int z = (int) (ranf() * COLORS);
 	    if (ranf() > 0.01) {
 		set_colors(fg = z, bg);
 	    } else {
 		set_colors(fg, bg = z);
-		napms(s_option);
+		if (s_option)
+		    napms(s_option);
 	    }
 	} else {
 	    if (ranf() <= 0.01) {
@@ -242,7 +254,8 @@ main(int argc, char *argv[])
 		} else {
 		    attr_off(WA_REVERSE, NULL);
 		}
-		napms(s_option);
+		if (s_option)
+		    napms(s_option);
 	    }
 	}
 	wch[0] = (wchar_t) p;

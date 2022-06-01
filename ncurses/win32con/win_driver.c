@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 2008-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -54,11 +55,9 @@
 
 #define CUR TerminalType(my_term).
 
-MODULE_ID("$Id: win_driver.c,v 1.61 2018/06/23 21:35:06 tom Exp $")
+MODULE_ID("$Id: win_driver.c,v 1.66 2020/03/01 00:18:49 tom Exp $")
 
-#ifndef __GNUC__
-#  error We need GCC to compile for MinGW
-#endif
+#define TypeAlloca(type,count) (type*) _alloca(sizeof(type) * (size_t) (count))
 
 #define WINMAGIC NCDRV_MAGIC(NCDRV_WINCONSOLE)
 
@@ -261,7 +260,7 @@ static BOOL
 con_write16(TERMINAL_CONTROL_BLOCK * TCB, int y, int x, cchar_t *str, int limit)
 {
     int actual = 0;
-    CHAR_INFO ci[limit];
+    CHAR_INFO *ci = TypeAlloca(CHAR_INFO, limit);
     COORD loc, siz;
     SMALL_RECT rec;
     int i;
@@ -310,7 +309,7 @@ con_write16(TERMINAL_CONTROL_BLOCK * TCB, int y, int x, cchar_t *str, int limit)
 static BOOL
 con_write8(TERMINAL_CONTROL_BLOCK * TCB, int y, int x, chtype *str, int n)
 {
-    CHAR_INFO ci[n];
+    CHAR_INFO *ci = TypeAlloca(CHAR_INFO, n);
     COORD loc, siz;
     SMALL_RECT rec;
     int i;
@@ -509,7 +508,7 @@ wcon_doupdate(TERMINAL_CONTROL_BLOCK * TCB)
 	if ((CurScreen(sp)->_clear || NewScreen(sp)->_clear)) {
 	    int x;
 #if USE_WIDEC_SUPPORT
-	    cchar_t empty[Width];
+	    cchar_t *empty = TypeAlloca(cchar_t, Width);
 	    wchar_t blank[2] =
 	    {
 		L' ', L'\0'
@@ -518,7 +517,7 @@ wcon_doupdate(TERMINAL_CONTROL_BLOCK * TCB)
 	    for (x = 0; x < Width; x++)
 		setcchar(&empty[x], blank, 0, 0, 0);
 #else
-	    chtype empty[Width];
+	    chtype *empty = TypeAlloca(chtype, Width);
 
 	    for (x = 0; x < Width; x++)
 		empty[x] = ' ';
@@ -674,8 +673,8 @@ wcon_dobeepflash(TERMINAL_CONTROL_BLOCK * TCB,
     int max_cells = (high * wide);
     int i;
 
-    CHAR_INFO this_screen[max_cells];
-    CHAR_INFO that_screen[max_cells];
+    CHAR_INFO *this_screen = TypeAlloca(CHAR_INFO, max_cells);
+    CHAR_INFO *that_screen = TypeAlloca(CHAR_INFO, max_cells);
     COORD this_size;
     SMALL_RECT this_region;
     COORD bufferCoord;
@@ -700,7 +699,9 @@ wcon_dobeepflash(TERMINAL_CONTROL_BLOCK * TCB,
 			bufferCoord,
 			&this_region)) {
 
-	    memcpy(that_screen, this_screen, sizeof(that_screen));
+	    memcpy(that_screen,
+		   this_screen,
+		   sizeof(CHAR_INFO) * (size_t) max_cells);
 
 	    for (i = 0; i < max_cells; i++) {
 		that_screen[i].Attributes = RevAttr(that_screen[i].Attributes);
@@ -1973,7 +1974,7 @@ _nc_mingw_isatty(int fd)
 
 /*   This is used when running in terminfo mode to discover,
      whether or not the "terminal" is actually a Windows
-     Console. It's the responsibilty of the console to deal
+     Console. It's the responsibility of the console to deal
      with the terminal escape sequences that are sent by
      terminfo.
  */
@@ -2162,7 +2163,7 @@ _nc_mingw_console_read(
 static bool
 InitConsole(void)
 {
-    /* initalize once, or not at all */
+    /* initialize once, or not at all */
     if (!console_initialized) {
 	int i;
 	DWORD num_buttons;

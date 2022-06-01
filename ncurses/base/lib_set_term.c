@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -43,10 +44,17 @@
 #include <curses.priv.h>
 #include <tic.h>
 
+#if USE_GPM_SUPPORT
+#ifdef HAVE_LIBDL
+/* use dynamic loader to avoid linkage dependency */
+#include <dlfcn.h>
+#endif
+#endif
+
 #undef CUR
 #define CUR SP_TERMTYPE
 
-MODULE_ID("$Id: lib_set_term.c,v 1.167 2017/09/10 21:09:16 tom Exp $")
+MODULE_ID("$Id: lib_set_term.c,v 1.175 2020/10/10 19:09:03 juergen Exp $")
 
 #ifdef USE_TERM_DRIVER
 #define MaxColors      InfoOf(sp).maxcolors
@@ -196,6 +204,14 @@ delscreen(SCREEN *sp)
 	if (_nc_find_prescr() == sp) {
 	    _nc_forget_prescr();
 	}
+#if USE_GPM_SUPPORT
+#ifdef HAVE_LIBDL
+	if (sp->_dlopen_gpm != 0) {
+	    dlclose(sp->_dlopen_gpm);
+	    sp->_dlopen_gpm = 0;
+	}
+#endif
+#endif /* USE_GPM_SUPPORT */
 	free(sp);
 
 	/*
@@ -339,8 +355,9 @@ NCURSES_SP_NAME(_nc_setupscreen) (
     sp->_next_screen = _nc_screen_chain;
     _nc_screen_chain = sp;
 
-    if ((sp->_current_attr = typeCalloc(NCURSES_CH_T, 1)) == 0)
+    if ((sp->_current_attr = typeCalloc(NCURSES_CH_T, 1)) == 0) {
 	returnCode(ERR);
+    }
 #endif
 
     /*
@@ -390,6 +407,11 @@ NCURSES_SP_NAME(_nc_setupscreen) (
     fflush(output);
     setmode(output, O_BINARY);
 #endif
+#if defined(EXP_WIN32_DRIVER)
+    T(("setting output mode to binary"));
+    fflush(output);
+    _setmode(fileno(output), _O_BINARY);
+#endif
     NCURSES_SP_NAME(_nc_set_buffer) (NCURSES_SP_ARGx output, TRUE);
     sp->_lines = (NCURSES_SIZE_T) slines;
     sp->_lines_avail = (NCURSES_SIZE_T) slines;
@@ -398,6 +420,10 @@ NCURSES_SP_NAME(_nc_setupscreen) (
     fflush(output);
     sp->_ofd = output ? fileno(output) : -1;
     sp->_ofp = output;
+#if defined(EXP_WIN32_DRIVER)
+    if (output)
+	_setmode(fileno(output), _O_BINARY);
+#endif
     sp->out_limit = (size_t) ((2 + slines) * (6 + scolumns));
     if ((sp->out_buffer = malloc(sp->out_limit)) == 0)
 	sp->out_limit = 0;
@@ -750,9 +776,12 @@ NCURSES_SP_NAME(_nc_ripoffline) (NCURSES_SP_DCLx
 				 int (*init) (WINDOW *, int))
 {
     int code = ERR;
+    TR_FUNC_BFR(1);
 
     START_TRACE();
-    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, TR_FUNC(init)));
+    T((T_CALLED("ripoffline(%p,%d,%s)"),
+       (void *) SP_PARM, line,
+       TR_FUNC_ARG(0, init)));
 
 #if NCURSES_SP_FUNCS
     if (SP_PARM != 0 && SP_PARM->_prescreen)

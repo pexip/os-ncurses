@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2016,2017 Free Software Foundation, Inc.              *
+ * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,7 +30,7 @@
 /*
  * Author:  Thomas E. Dickey 1998
  *
- * $Id: filter.c,v 1.32 2017/09/28 23:40:39 tom Exp $
+ * $Id: filter.c,v 1.35 2020/07/25 22:40:57 tom Exp $
  *
  * An example of the 'filter()' function in ncurses, this program prompts
  * for commands and executes them (like a command shell).  It illustrates
@@ -41,6 +42,7 @@
  * reset_shell_mode() and reset_prog_mode() functions, we could invoke endwin()
  * and refresh(), but that does not work any better.
  */
+#define NEED_KEY_EVENT
 #include <test.priv.h>
 
 #if HAVE_FILTER
@@ -100,7 +102,6 @@ static int
 new_command(char *buffer, int length, int underline, bool clocked, bool polled)
 {
     int code = OK;
-    int limit;
 
     if (polled) {
 	bool done = FALSE;
@@ -113,6 +114,7 @@ new_command(char *buffer, int length, int underline, bool clocked, bool polled)
 
 	timeout(20);		/* no one types 50CPS... */
 	while (!done) {
+	    int limit;
 	    int ch = getch();
 
 	    buffer[used] = '\0';

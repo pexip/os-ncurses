@@ -1,5 +1,6 @@
 .\"***************************************************************************
-.\" Copyright (c) 2002-2017,2018 Free Software Foundation, Inc.              *
+.\" Copyright 2018-2019,2020 Thomas E. Dickey                                *
+.\" Copyright 2002-2012,2017 Free Software Foundation, Inc.                  *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,8 +27,12 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_get_wstr.3x,v 1.16 2018/09/01 20:58:10 tom Exp $
+.\" $Id: curs_get_wstr.3x,v 1.21 2020/10/17 23:17:24 tom Exp $
 .TH curs_get_wstr 3X ""
+.ie \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie \n(.g .ds '' \(rq
+.el       .ds '' ''
 .de bP
 .ie n  .IP \(bu 4
 .el    .IP \(bu 2
@@ -56,7 +61,7 @@
 \fBint wget_wstr(WINDOW *\fR\fIwin\fR\fB, wint_t *\fR\fIwstr\fR\fB);\fR
 .br
 \fBint wgetn_wstr(WINDOW *\fR\fIwin\fR\fB, wint_t *\fR\fIwstr\fR\fB, int \fR\fIn\fR\fB);\fR
-.br
+.sp
 \fBint mvget_wstr(int \fR\fIy\fR\fB, int \fR\fIx\fR\fB, wint_t *\fR\fIwstr\fR\fB);\fR
 .br
 \fBint mvgetn_wstr(int \fR\fIy\fR\fB, int \fR\fIx\fR\fB, wint_t *\fR\fIwstr\fR\fB, int \fR\fIn\fR\fB);\fR
@@ -164,7 +169,7 @@ Functions using a window parameter return an error if it is null.
 returns an error if the associated call to \fBwget_wch\fP failed.
 .RE
 .PP
-Functions with a "mv" prefix first perform a cursor movement using
+Functions with a \*(``mv\*('' prefix first perform a cursor movement using
 \fBwmove\fP, and return an error if the position is outside the window,
 or if the window pointer is null.
 .SH PORTABILITY
@@ -189,10 +194,10 @@ The latter function \fIget_wch()\fP can return a negative value,
 while \fBwchar_t\fP is a unsigned type.
 All of the vendors implement this using \fBwint_t\fR, following the standard.
 .PP
-X/Open Curses issue 7 is unclear regarding whether
+X/Open Curses, Issue 7 (2009) is unclear regarding whether
 the terminating \fInull \fP\fBwchar_t\fP
 value is counted in the length parameter \fIn\fP.
-X/Open Curses issue 7 revised the corresponding description
+X/Open Curses, Issue 7 revised the corresponding description
 of \fBwgetnstr\fP to address this issue.
 The unrevised description of \fBwget_nwstr\fP can be interpreted either way.
 This implementation counts the terminator in the length.

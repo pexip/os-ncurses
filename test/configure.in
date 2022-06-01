@@ -1,5 +1,6 @@
 dnl***************************************************************************
-dnl Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+dnl Copyright 2018-2019,2020 Thomas E. Dickey                                *
+dnl Copyright 1998-2017,2018 Free Software Foundation, Inc.                  *
 dnl                                                                          *
 dnl Permission is hereby granted, free of charge, to any person obtaining a  *
 dnl copy of this software and associated documentation files (the            *
@@ -28,7 +29,7 @@ dnl***************************************************************************
 dnl
 dnl Author: Thomas E. Dickey 1996-on
 dnl
-dnl $Id: configure.in,v 1.150 2018/06/17 01:22:00 tom Exp $
+dnl $Id: configure.in,v 1.162 2020/08/29 13:23:50 tom Exp $
 dnl This is a simple configuration-script for the ncurses test programs that
 dnl allows the test-directory to be separately configured against a reference
 dnl system (i.e., sysvr4 curses)
@@ -38,9 +39,10 @@ dnl It's only for testing purposes.
 dnl
 dnl For additional information, see
 dnl		https://invisible-island.net/autoconf/
+dnl		https://invisible-island.net/autoconf/my-autoconf.html
 dnl		https://invisible-island.net/ncurses/ncurses-examples.html
 dnl ---------------------------------------------------------------------------
-AC_PREREQ(2.52.20170501)
+AC_PREREQ(2.52.20200111)
 AC_INIT(ncurses.c)
 AC_CONFIG_HEADER(ncurses_cfg.h:ncurses_tst.hin)
 
@@ -174,6 +176,10 @@ case $cf_cv_screen in
 	;;
 esac
 
+CF_WITH_LIB_BASENAME(FORM_NAME,form)
+CF_WITH_LIB_BASENAME(MENU_NAME,menu)
+CF_WITH_LIB_BASENAME(PANEL_NAME,panel)
+
 AC_MSG_CHECKING(if you want to check for panel functions)
 CF_ARG_DISABLE(panel,
 	[  --disable-panel         disable checks for panel functions],
@@ -183,7 +189,7 @@ CF_ARG_DISABLE(panel,
 AC_MSG_RESULT($cf_enable_panel)
 if test $cf_enable_panel = yes
 then
-	CF_CHECK_CURSES_LIB(panel,$cf_cv_libtype,new_panel,0)
+	CF_CHECK_CURSES_LIB($PANEL_NAME,$cf_cv_libtype,new_panel,0)
 	cf_curses_headers="$cf_curses_headers panel.h"
 fi
 
@@ -203,7 +209,7 @@ then
 		CF_NETBSD_MENU_H
 		;;
 	esac
-	CF_CHECK_CURSES_LIB(menu,$cf_cv_libtype,menu_driver,[0,0])
+	CF_CHECK_CURSES_LIB($MENU_NAME,$cf_cv_libtype,menu_driver,[0,0])
 	cf_curses_headers="$cf_curses_headers menu.h"
 fi
 
@@ -223,7 +229,7 @@ then
 		CF_NETBSD_FORM_H
 		;;
 	esac
-	CF_CHECK_CURSES_LIB(form,$cf_cv_libtype,form_driver,[0,0])
+	CF_CHECK_CURSES_LIB($FORM_NAME,$cf_cv_libtype,form_driver,[0,0])
 	cf_curses_headers="$cf_curses_headers form.h"
 fi
 
@@ -250,7 +256,9 @@ CF_GETOPT_HEADER
 AC_CHECK_FUNCS( \
 getopt \
 gettimeofday \
-tdestroy \
+snprintf \
+strdup \
+strstr \
 tsearch \
 )
 
@@ -258,12 +266,37 @@ tsearch \
 AC_CACHE_CHECK(if we can use termcap.h,cf_cv_have_termcap_h,[
 	AC_TRY_COMPILE([
 #include <curses.h>
+#ifdef NCURSES_VERSION
+#undef NCURSES_VERSION
+#endif
 #include <termcap.h>
+#ifndef NCURSES_VERSION
+#error wrong header
+#endif
 ],
 	[return 0;],
 	[cf_cv_have_termcap_h=yes],
 	[cf_cv_have_termcap_h=no])])
-test "x$cf_cv_have_termcap_h" = xyes && AC_DEFINE(HAVE_TERMCAP_H)
+if test "x$cf_cv_have_termcap_h" = xyes
+then
+	AC_DEFINE(HAVE_TERMCAP_H,1,[Define to 1 if we can use termcap.h])
+else
+AC_CACHE_CHECK(if we can use ncurses/termcap.h,cf_cv_have_ncurses_termcap_h,[
+	AC_TRY_COMPILE([
+#include <ncurses/curses.h>
+#ifdef NCURSES_VERSION
+#undef NCURSES_VERSION
+#endif
+#include <ncurses/termcap.h>
+#ifndef NCURSES_VERSION
+#error wrong header
+#endif
+],
+	[return 0;],
+	[cf_cv_have_ncurses_termcap_h=yes],
+	[cf_cv_have_ncurses_termcap_h=no])])
+test "x$cf_cv_have_ncurses_termcap_h" = xyes && AC_DEFINE(HAVE_NCURSES_TERMCAP_H,1,[Define to 1 if we can use ncurses/termcap.h])
+fi
 
 if test "x$ac_cv_func_getopt" = xno; then
 	AC_MSG_ERROR(getopt is required for building programs)
@@ -291,6 +324,8 @@ color_set \
 copywin \
 delscreen \
 dupwin \
+exit_curses \
+exit_terminfo \
 filter \
 getbegx \
 getcurx \
@@ -317,6 +352,7 @@ setupterm \
 slk_color \
 slk_init \
 termattrs \
+termname \
 tgetent \
 tigetnum \
 tigetstr \
@@ -401,7 +437,7 @@ extern void _nc_init_pthreads(void);
 	[cf_cv_use_pthreads=yes],
 	[cf_cv_use_pthreads=no])
 ])
-test $cf_cv_use_pthreads = yes && AC_DEFINE(USE_PTHREADS)
+test $cf_cv_use_pthreads = yes && AC_DEFINE(USE_PTHREADS,1,[Define to 1 if $cf_cv_screen library uses pthreads])
 
 CF_SYS_TIME_SELECT
 
@@ -444,6 +480,7 @@ if test "$cf_enable_widec" = yes; then
 fi
 
 CF_CURSES_CHECK_DATA(\
+TABSIZE \
 curscr \
 ospeed \
 boolnames \
@@ -452,6 +489,7 @@ ttytype)
 
 dnl ---------------------------------------------------------------------------
 CF_HELP_MESSAGE(Testing/development Options:)
+CF_WITH_SCREEN_PDCURSES
 CF_ENABLE_WARNINGS(Wno-unknown-pragmas)
 CF_DISABLE_LEAKS
 CF_DISABLE_RPATH_HACK

@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 1998-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -84,7 +85,7 @@
 
 #include <ctype.h>
 
-MODULE_ID("$Id: tty_update.c,v 1.299 2018/09/08 21:33:59 tom Exp $")
+MODULE_ID("$Id: tty_update.c,v 1.309 2020/05/27 23:56:32 tom Exp $")
 
 /*
  * This define controls the line-breakout optimization.  Every once in a
@@ -116,14 +117,14 @@ static int ClrBottom(SCREEN *, int total);
 static void ClearScreen(SCREEN *, NCURSES_CH_T blank);
 static void ClrUpdate(SCREEN *);
 static void DelChar(SCREEN *, int count);
-static void InsStr(SCREEN *, NCURSES_CH_T * line, int count);
+static void InsStr(SCREEN *, NCURSES_CH_T *line, int count);
 static void TransformLine(SCREEN *, int const lineno);
 #else
 static int ClrBottom(int total);
 static void ClearScreen(NCURSES_CH_T blank);
 static void ClrUpdate(void);
 static void DelChar(int count);
-static void InsStr(NCURSES_CH_T * line, int count);
+static void InsStr(NCURSES_CH_T *line, int count);
 static void TransformLine(int const lineno);
 #endif
 
@@ -169,9 +170,9 @@ position_check(NCURSES_SP_DCLx int expected_y, int expected_x, char *legend)
 	if (y - 1 != expected_y || x - 1 != expected_x) {
 	    NCURSES_SP_NAME(beep) (NCURSES_SP_ARG);
 	    NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				    tparm("\033[%d;%dH",
-					  expected_y + 1,
-					  expected_x + 1),
+				    TIPARM_2("\033[%d;%dH",
+					     expected_y + 1,
+					     expected_x + 1),
 				    1, NCURSES_SP_NAME(_nc_outch));
 	    _tracef("position seen (%d, %d) doesn't match expected one (%d, %d) in %s",
 		    y - 1, x - 1, expected_y, expected_x, legend);
@@ -210,73 +211,8 @@ GoTo(NCURSES_SP_DCLx int const row, int const col)
 }
 
 #if !NCURSES_WCWIDTH_GRAPHICS
-static bool
-is_wacs_value(unsigned ch)
-{
-    bool result;
-    switch (ch) {
-    case 0x00a3:		/* FALLTHRU - ncurses pound-sterling symbol */
-    case 0x00b0:		/* FALLTHRU - VT100 degree symbol */
-    case 0x00b1:		/* FALLTHRU - VT100 plus/minus */
-    case 0x00b7:		/* FALLTHRU - VT100 bullet */
-    case 0x03c0:		/* FALLTHRU - ncurses greek pi */
-    case 0x2190:		/* FALLTHRU - Teletype arrow pointing left */
-    case 0x2191:		/* FALLTHRU - Teletype arrow pointing up */
-    case 0x2192:		/* FALLTHRU - Teletype arrow pointing right */
-    case 0x2193:		/* FALLTHRU - Teletype arrow pointing down */
-    case 0x2260:		/* FALLTHRU - ncurses not-equal */
-    case 0x2264:		/* FALLTHRU - ncurses less-than-or-equal-to */
-    case 0x2265:		/* FALLTHRU - ncurses greater-than-or-equal-to */
-    case 0x23ba:		/* FALLTHRU - VT100 scan line 1 */
-    case 0x23bb:		/* FALLTHRU - ncurses scan line 3 */
-    case 0x23bc:		/* FALLTHRU - ncurses scan line 7 */
-    case 0x23bd:		/* FALLTHRU - VT100 scan line 9 */
-    case 0x2500:		/* FALLTHRU - VT100 horizontal line */
-    case 0x2501:		/* FALLTHRU - thick horizontal line */
-    case 0x2502:		/* FALLTHRU - VT100 vertical line */
-    case 0x2503:		/* FALLTHRU - thick vertical line */
-    case 0x250c:		/* FALLTHRU - VT100 upper left corner */
-    case 0x250f:		/* FALLTHRU - thick upper left corner */
-    case 0x2510:		/* FALLTHRU - VT100 upper right corner */
-    case 0x2513:		/* FALLTHRU - thick upper right corner */
-    case 0x2514:		/* FALLTHRU - VT100 lower left corner */
-    case 0x2517:		/* FALLTHRU - thick lower left corner */
-    case 0x2518:		/* FALLTHRU - VT100 lower right corner */
-    case 0x251b:		/* FALLTHRU - thick lower right corner */
-    case 0x251c:		/* FALLTHRU - VT100 tee pointing left */
-    case 0x2523:		/* FALLTHRU - thick tee pointing left */
-    case 0x2524:		/* FALLTHRU - VT100 tee pointing right */
-    case 0x252b:		/* FALLTHRU - thick tee pointing right */
-    case 0x252c:		/* FALLTHRU - VT100 tee pointing down */
-    case 0x2533:		/* FALLTHRU - thick tee pointing down */
-    case 0x2534:		/* FALLTHRU - VT100 tee pointing up */
-    case 0x253b:		/* FALLTHRU - thick tee pointing up */
-    case 0x253c:		/* FALLTHRU - VT100 large plus or crossover */
-    case 0x254b:		/* FALLTHRU - thick large plus or crossover */
-    case 0x2550:		/* FALLTHRU - double horizontal line */
-    case 0x2551:		/* FALLTHRU - double vertical line */
-    case 0x2554:		/* FALLTHRU - double upper left corner */
-    case 0x2557:		/* FALLTHRU - double upper right corner */
-    case 0x255a:		/* FALLTHRU - double lower left corner */
-    case 0x255d:		/* FALLTHRU - double lower right corner */
-    case 0x2560:		/* FALLTHRU - double tee pointing right */
-    case 0x2563:		/* FALLTHRU - double tee pointing left */
-    case 0x2566:		/* FALLTHRU - double tee pointing down */
-    case 0x2569:		/* FALLTHRU - double tee pointing up */
-    case 0x256c:		/* FALLTHRU - double large plus or crossover */
-    case 0x2592:		/* FALLTHRU - VT100 checker board (stipple) */
-    case 0x25ae:		/* FALLTHRU - Teletype solid square block */
-    case 0x25c6:		/* FALLTHRU - VT100 diamond */
-    case 0x2603:		/* FALLTHRU - Teletype lantern symbol */
-	result = TRUE;
-	break;
-    default:
-	result = FALSE;
-	break;
-    }
-    return result;
-}
-#endif
+#define is_wacs_value(ch) (_nc_wacs_width(ch) == 1 && wcwidth(ch) > 1)
+#endif /* !NCURSES_WCWIDTH_GRAPHICS */
 
 static NCURSES_INLINE void
 PutAttrChar(NCURSES_SP_DCLx CARG_CH_T ch)
@@ -304,7 +240,7 @@ PutAttrChar(NCURSES_SP_DCLx CARG_CH_T ch)
      * Determine the number of character cells which the 'ch' value will use
      * on the screen.  It should be at least one.
      */
-    if ((chlen = wcwidth(CharOf(CHDEREF(ch)))) <= 0) {
+    if ((chlen = _nc_wacs_width(CharOf(CHDEREF(ch)))) <= 0) {
 	static const NCURSES_CH_T blank = NewChar(BLANK_TEXT);
 
 	/*
@@ -552,7 +488,7 @@ wrap_cursor(NCURSES_SP_DCL0)
 	    TR(TRACE_CHARPUT, ("turning off (%#lx) %s before wrapping",
 			       (unsigned long) AttrOf(SCREEN_ATTRS(SP_PARM)),
 			       _traceattr(AttrOf(SCREEN_ATTRS(SP_PARM)))));
-	    (void) VIDATTR(SP_PARM, A_NORMAL, 0);
+	    VIDPUTS(SP_PARM, A_NORMAL, 0);
 	}
     } else {
 	SP_PARM->_curscol--;
@@ -631,7 +567,7 @@ can_clear_with(NCURSES_SP_DCLx ARG_CH_T ch)
  * This code is optimized using ech and rep.
  */
 static int
-EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T * ntext, int num)
+EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T *ntext, int num)
 {
     int i;
 
@@ -669,7 +605,7 @@ EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T * ntext, int num)
 		&& runcount > SP_PARM->_ech_cost + SP_PARM->_cup_ch_cost
 		&& can_clear_with(NCURSES_SP_ARGx CHREF(ntext0))) {
 		UpdateAttrs(SP_PARM, ntext0);
-		NCURSES_PUTP2("erase_chars", TPARM_1(erase_chars, runcount));
+		NCURSES_PUTP2("erase_chars", TIPARM_1(erase_chars, runcount));
 
 		/*
 		 * If this is the last part of the given interval,
@@ -684,10 +620,14 @@ EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T * ntext, int num)
 		    return 1;	/* cursor stays in the middle */
 		}
 	    } else if (repeat_char != 0 &&
+#if BSD_TPUTS
+		       !isdigit(UChar(CharOf(ntext0))) &&
+#endif
 #if USE_WIDEC_SUPPORT
 		       (!SP_PARM->_screen_unicode &&
-			((AttrOf(ntext0) & A_ALTCHARSET) == 0 ||
-			 (CharOf(ntext0) < ACS_LEN))) &&
+			(CharOf(ntext0) < ((AttrOf(ntext0) & A_ALTCHARSET)
+					   ? ACS_LEN
+					   : 256))) &&
 #endif
 		       runcount > SP_PARM->_rep_cost) {
 		NCURSES_CH_T temp;
@@ -708,9 +648,9 @@ EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T * ntext, int num)
 			    AttrOf(ntext0) | A_ALTCHARSET);
 		}
 		NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-					TPARM_2(repeat_char,
-						CharOf(temp),
-						rep_count),
+					TIPARM_2(repeat_char,
+						 CharOf(temp),
+						 rep_count),
 					1,
 					NCURSES_SP_NAME(_nc_outch));
 		SP_PARM->_curscol += rep_count;
@@ -742,8 +682,8 @@ EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T * ntext, int num)
  */
 static int
 PutRange(NCURSES_SP_DCLx
-	 const NCURSES_CH_T * otext,
-	 const NCURSES_CH_T * ntext,
+	 const NCURSES_CH_T *otext,
+	 const NCURSES_CH_T *ntext,
 	 int row,
 	 int first, int last)
 {
@@ -1764,7 +1704,7 @@ ClearScreen(NCURSES_SP_DCLx NCURSES_CH_T blank)
 */
 
 static void
-InsStr(NCURSES_SP_DCLx NCURSES_CH_T * line, int count)
+InsStr(NCURSES_SP_DCLx NCURSES_CH_T *line, int count)
 {
     TR(TRACE_UPDATE, ("InsStr(%p, %p,%d) called",
 		      (void *) SP_PARM,
@@ -1776,7 +1716,7 @@ InsStr(NCURSES_SP_DCLx NCURSES_CH_T * line, int count)
     if (parm_ich) {
 	TPUTS_TRACE("parm_ich");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_1(parm_ich, count),
+				TIPARM_1(parm_ich, count),
 				1,
 				NCURSES_SP_NAME(_nc_outch));
 	while (count > 0) {
@@ -1829,7 +1769,7 @@ DelChar(NCURSES_SP_DCLx int count)
     if (parm_dch) {
 	TPUTS_TRACE("parm_dch");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_1(parm_dch, count),
+				TIPARM_1(parm_dch, count),
 				1,
 				NCURSES_SP_NAME(_nc_outch));
     } else {
@@ -1898,7 +1838,7 @@ scroll_csr_forward(NCURSES_SP_DCLx
 	UpdateAttrs(SP_PARM, blank);
 	TPUTS_TRACE("parm_index");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_2(parm_index, n, 0),
+				TIPARM_1(parm_index, n),
 				n,
 				NCURSES_SP_NAME(_nc_outch));
     } else if (parm_delete_line && bot == maxy) {
@@ -1906,7 +1846,7 @@ scroll_csr_forward(NCURSES_SP_DCLx
 	UpdateAttrs(SP_PARM, blank);
 	TPUTS_TRACE("parm_delete_line");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_2(parm_delete_line, n, 0),
+				TIPARM_1(parm_delete_line, n),
 				n,
 				NCURSES_SP_NAME(_nc_outch));
     } else if (scroll_forward && top == miny && bot == maxy) {
@@ -1963,7 +1903,7 @@ scroll_csr_backward(NCURSES_SP_DCLx
 	UpdateAttrs(SP_PARM, blank);
 	TPUTS_TRACE("parm_rindex");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_2(parm_rindex, n, 0),
+				TIPARM_1(parm_rindex, n),
 				n,
 				NCURSES_SP_NAME(_nc_outch));
     } else if (parm_insert_line && bot == maxy) {
@@ -1971,7 +1911,7 @@ scroll_csr_backward(NCURSES_SP_DCLx
 	UpdateAttrs(SP_PARM, blank);
 	TPUTS_TRACE("parm_insert_line");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_2(parm_insert_line, n, 0),
+				TIPARM_1(parm_insert_line, n),
 				n,
 				NCURSES_SP_NAME(_nc_outch));
     } else if (scroll_reverse && top == miny && bot == maxy) {
@@ -2019,7 +1959,7 @@ scroll_idl(NCURSES_SP_DCLx int n, int del, int ins, NCURSES_CH_T blank)
     } else if (parm_delete_line) {
 	TPUTS_TRACE("parm_delete_line");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_2(parm_delete_line, n, 0),
+				TIPARM_1(parm_delete_line, n),
 				n,
 				NCURSES_SP_NAME(_nc_outch));
     } else {			/* if (delete_line) */
@@ -2035,7 +1975,7 @@ scroll_idl(NCURSES_SP_DCLx int n, int del, int ins, NCURSES_CH_T blank)
     } else if (parm_insert_line) {
 	TPUTS_TRACE("parm_insert_line");
 	NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				TPARM_2(parm_insert_line, n, 0),
+				TIPARM_1(parm_insert_line, n),
 				n,
 				NCURSES_SP_NAME(_nc_outch));
     } else {			/* if (insert_line) */
@@ -2100,7 +2040,7 @@ NCURSES_SP_NAME(_nc_scrolln) (NCURSES_SP_DCLx
 		NCURSES_PUTP2("save_cursor", save_cursor);
 	    }
 	    NCURSES_PUTP2("change_scroll_region",
-			  TPARM_2(change_scroll_region, top, bot));
+			  TIPARM_2(change_scroll_region, top, bot));
 	    if (cursor_saved) {
 		NCURSES_PUTP2("restore_cursor", restore_cursor);
 	    } else {
@@ -2110,7 +2050,7 @@ NCURSES_SP_NAME(_nc_scrolln) (NCURSES_SP_DCLx
 	    res = scroll_csr_forward(NCURSES_SP_ARGx n, top, bot, top, bot, blank);
 
 	    NCURSES_PUTP2("change_scroll_region",
-			  TPARM_2(change_scroll_region, 0, maxy));
+			  TIPARM_2(change_scroll_region, 0, maxy));
 	    SP_PARM->_cursrow = SP_PARM->_curscol = -1;
 	}
 
@@ -2146,7 +2086,7 @@ NCURSES_SP_NAME(_nc_scrolln) (NCURSES_SP_DCLx
 		NCURSES_PUTP2("save_cursor", save_cursor);
 	    }
 	    NCURSES_PUTP2("change_scroll_region",
-			  TPARM_2(change_scroll_region, top, bot));
+			  TIPARM_2(change_scroll_region, top, bot));
 	    if (cursor_saved) {
 		NCURSES_PUTP2("restore_cursor", restore_cursor);
 	    } else {
@@ -2157,7 +2097,7 @@ NCURSES_SP_NAME(_nc_scrolln) (NCURSES_SP_DCLx
 				      -n, top, bot, top, bot, blank);
 
 	    NCURSES_PUTP2("change_scroll_region",
-			  TPARM_2(change_scroll_region, 0, maxy));
+			  TIPARM_2(change_scroll_region, 0, maxy));
 	    SP_PARM->_cursrow = SP_PARM->_curscol = -1;
 	}
 

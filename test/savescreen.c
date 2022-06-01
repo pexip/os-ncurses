@@ -1,5 +1,6 @@
 /****************************************************************************
- * Copyright (c) 2007-2017,2018 Free Software Foundation, Inc.              *
+ * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2006-2017,2018 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,12 +27,13 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: savescreen.c,v 1.53 2018/05/12 15:11:16 tom Exp $
+ * $Id: savescreen.c,v 1.57 2020/02/02 23:34:34 tom Exp $
  *
  * Demonstrate save/restore functions from the curses library.
  * Thomas Dickey - 2007/7/14
  */
 
+#define NEED_TIME_H
 #include <test.priv.h>
 #include <popup_msg.h>
 #include <parse_rgb.h>
@@ -40,17 +42,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
-#if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
-#else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
-#endif
 
 #if defined(__hpux)
 #define MyMarker 'X'
@@ -397,7 +388,7 @@ main(int argc, char *argv[])
 			while (col++ < cols) {
 			    int color = (((r * (g_max + 1)) + g) * (b_max + 1)
 					 + b + MAX_ANSI);
-#if HAVE_INIT_EXTENDED_COLOR
+#if USE_EXTENDED_COLOR
 			    init_extended_pair(pair, color, color);
 #else
 			    init_pair(pair, color, color);
@@ -505,7 +496,7 @@ main(int argc, char *argv[])
 	    }
 	    move(0, 0);
 	} else {
-	    exit_curses();
+	    stop_curses();
 	    fprintf(stderr, "Cannot open \"%s\"\n", fill_by);
 	    ExitProgram(EXIT_FAILURE);
 	}
@@ -517,14 +508,14 @@ main(int argc, char *argv[])
 	 * Use the last file as the initial/current screen.
 	 */
 	if (last < 0) {
-	    exit_curses();
+	    stop_curses();
 	    printf("No screen-dumps given\n");
 	    ExitProgram(EXIT_FAILURE);
 	}
 
 	which = last;
 	if (load_screen(files[which]) == ERR) {
-	    exit_curses();
+	    stop_curses();
 	    printf("Cannot load screen-dump %s\n", files[which]);
 	    ExitProgram(EXIT_FAILURE);
 	}
