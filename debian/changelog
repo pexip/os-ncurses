@@ -1,3 +1,9 @@
+ncurses (6.2+20201114-2pexip1) pexip; urgency=medium
+
+  * Initial bullseye build
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 02 Jun 2022 14:42:36 +0100
+
 ncurses (6.2+20201114-2) unstable; urgency=medium
 
   * New patch 02-fix-mlterm.diff, cherry-picked from the 20201205 upstream
