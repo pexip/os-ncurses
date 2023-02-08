@@ -2,3 +2,6 @@
 # package, no point in describing them differently.
 ncurses source: duplicate-short-description libncurses5-dev libncursesw5-dev libtinfo-dev
 ncurses source: duplicate-long-description libncurses5-dev libncursesw5-dev libtinfo-dev
+
+# Silence overzealousness, see https://bugs.debian.org/1019980
+ncurses source: source-is-missing [doc/html/ada/*]
