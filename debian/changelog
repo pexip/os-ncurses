@@ -1,4 +1,4 @@
-ncurses (6.2+20201114-2+deb11u1pexip1) bullseye; urgency=medium
+ncurses (6.2+20201114-2+deb11u1pexip1) pexip; urgency=medium
 
   * New upstream release with security fixes
 
