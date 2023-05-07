@@ -20,14 +20,21 @@ include /usr/share/dpkg/architecture.mk
 ifneq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
 HOST_CC ?= $(DEB_HOST_GNU_TYPE)-gcc
 HOST_CXX ?= $(DEB_HOST_GNU_TYPE)-g++
+STRIP = $(DEB_HOST_GNU_TYPE)-strip
 else
 HOST_CC ?= gcc
 HOST_CXX ?= g++
+STRIP = strip
 endif
+
+STRIP_OPTIONS = --strip-debug --remove-section=.comment \
+		--remove-section=.note --enable-deterministic-archives \
+		-R .gnu.lto_* -R .gnu.debuglto_* \
+		-N __gnu_lto_slim -N __gnu_lto_v1
 
 # These are important since this is a library package
 soname=6
-sodepver = (>= 6.2)
+sodepver = (>= 6.3+20220423)
 
 # Name our packages
 package-base=ncurses-base
@@ -150,6 +157,7 @@ CONFARGS =	--prefix=/usr \
 		--with-versioned-syms \
 		--disable-wattr-macros \
 		--disable-relink \
+		--disable-pkg-ldflags \
 		--enable-overwrite \
 		--with-xterm-kbs=del
 
@@ -164,7 +172,7 @@ CONFARGS-LEGACY =	$(CONFARGS) \
 
 CONFARGS-TEST =	--prefix=/usr \
 		--build=$(DEB_BUILD_GNU_TYPE) \
-		--bindir=/usr/lib/ncurses/examples \
+		--bindir=/usr/libexec/ncurses-examples \
 		--datadir=/usr/share/ncurses-examples \
 		--disable-stripping \
 		--with-x11-rgb=/etc/X11/rgb.txt \
@@ -190,8 +198,7 @@ libterminfofiles=a/ansi c/cons25 c/cons25-debian c/cygwin d/dumb h/hurd l/linux 
 
 # Blacklist terminfo entries shipped by other Debian packages so that we do
 # not begin shipping them by accident.
-badterminfo = 5/5250 f/fbterm i/iterm i/iterm-am i/iterm-color \
-	j/jfbterm k/kon k/kon2 l/linux-5250 s/stterm s/stterm-256color
+badterminfo = f/fbterm f/foot f/foot-direct k/kbtin x/xterm-kitty K/KBtin
 
 ifneq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
 # Force necessary configure checks which do not work when
@@ -204,7 +211,7 @@ endif
 
 config.guess-stamp:
 	dh_update_autotools_config
-	dh_autoreconf autoreconf-dickey -- -f -i
+	dh_autoreconf debian/autoconf.sh
 	touch $@
 
 $(objdir)/config.status: config.guess-stamp
@@ -465,7 +472,7 @@ ifneq ($(build_examples),)
 	# Install the test programs, sparing the detour to debian/tmp.
 	$(MAKE) -C $(objdir-test) DESTDIR=$(workdir)/debian/$(package-examples) install
 	sed -i -e 's%^#!/usr/bin/env perl%#!/usr/bin/perl%' \
-		$(workdir)/debian/$(package-examples)/usr/lib/ncurses/examples/tracemunch
+		$(workdir)/debian/$(package-examples)/usr/libexec/ncurses-examples/tracemunch
 endif
 
 debian/libtermcap.so: debian/libtermcap.so.in
@@ -479,7 +486,7 @@ binary-arch: build-arch install-arch $(autogen-files)
 	dh_install -p$(package-bin) -Xncurses6-config -Xncursesw6-config
 	dh_install -a -N$(package-bin)
 	dh_installman -a
-	dh_installdocs -p$(package-ti) -p$(package-bin) -p$(package-examples) debian/FAQ
+	dh_installdocs -p$(package-ti) -p$(package-bin) -p$(package-examples)
 	dh_installdocs -a -N$(package-bin) -N$(package-ti) -N$(package-examples) \
 		       -N$(package-ti-legacy) -N$(package-lib-legacy) -N$(package-libw-legacy) \
 		       -N$(package-lib-32) -N$(package-libw-32) -N$(package-dev-32) -N$(package-ti-32) \
@@ -504,15 +511,20 @@ endif
 	# Strip the packages, shipping detached debugging symbols.
 	dh_dwz -a
 	dh_strip -a
+	# Fugly workaround for dh_strip bug #875780
+	$(STRIP) $(STRIP_OPTIONS) debian/libncurses-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libncurses++w.a
 	dh_lintian -a
 	dh_link -a
-	dh_compress -p$(package-examples) usr/lib/ncurses/examples/README
+	dh_compress -p$(package-examples) usr/libexec/ncurses-examples/README
 	dh_compress -a -N$(package-examples)
 	dh_fixperms -a
+ifneq ($(build_examples),)
+	chmod -x debian/$(package-examples)/usr/libexec/ncurses-examples/README*
+endif
 	dh_missing -a --fail-missing
 	dh_makeshlibs -p$(package-ti) -V "$(package-ti) $(sodepver)" --add-udeb=$(package-ti)-udeb -- -c4
 	dh_makeshlibs -p$(package-lib) -V "$(package-lib) $(sodepver)" -- -c4
-	dh_makeshlibs -p$(package-libw) -V "$(package-libw) $(sodepver)" -- -c4
+	dh_makeshlibs -p$(package-libw) -V "$(package-libw) $(sodepver)" --add-udeb=$(package-libw)-udeb -- -c4
 	dh_makeshlibs -p$(package-ti-legacy) -V "$(package-ti-legacy) $(sodepver)" -- -c4
 	dh_makeshlibs -p$(package-lib-legacy) -V "$(package-lib-legacy) $(sodepver)" -- -c4
 	dh_makeshlibs -p$(package-libw-legacy) -V "$(package-libw-legacy) $(sodepver)" -- -c4
@@ -531,6 +543,10 @@ endif
 	dh_installdeb -a
 	# We don't install the tic library in the libtinfo6 udeb, adjust the shlibs file
 	sed -i '/^udeb: libtic /d' debian/$(package-ti)/DEBIAN/shlibs
+	# For the ncurses udeb, we discard libformw, libmenuw and libpanelw as well
+	sed -i '/^udeb: libformw /d' debian/$(package-libw)/DEBIAN/shlibs
+	sed -i '/^udeb: libmenuw /d' debian/$(package-libw)/DEBIAN/shlibs
+	sed -i '/^udeb: libpanelw /d' debian/$(package-libw)/DEBIAN/shlibs
 	dh_md5sums -a
 	dh_builddeb -a
 
@@ -538,7 +554,7 @@ binary-indep: build-indep install-indep
 	dh_testdir
 	dh_testroot
 
-	dh_installdocs -i -Xhtml/Ada95.html -Xhtml/ada/
+	dh_installdocs -i -Xhtml/Ada95.html -Xhtml/ada/ debian/FAQ
 	dh_installchangelogs -i NEWS
 	dh_install -i
 	dh_installdirs -i

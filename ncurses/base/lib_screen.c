@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 2019-2020,2021 Thomas E. Dickey                                *
  * Copyright 1998-2017,2018 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -42,7 +42,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_screen.c,v 1.100 2020/05/25 22:48:41 tom Exp $")
+MODULE_ID("$Id: lib_screen.c,v 1.104 2021/10/23 17:12:16 tom Exp $")
 
 #define MAX_SIZE 0x3fff		/* 16k is big enough for a window or pad */
 
@@ -200,7 +200,7 @@ read_txt(FILE *fp)
 
 	if (ch == '\n') {
 	    result[--used] = '\0';
-	    T(("READ:%s", result));
+	    TR(TRACE_IEVENT, ("READ:%s", result));
 	} else if (used == 0) {
 	    free(result);
 	    result = 0;
@@ -214,7 +214,7 @@ decode_attr(char *source, attr_t *target, int *color)
 {
     bool found = FALSE;
 
-    T(("decode_attr   '%s'", source));
+    TR(TRACE_IEVENT, ("decode_attr   '%s'", source));
 
     while (*source) {
 	if (source[0] == MARKER && source[1] == L_CURL) {
@@ -272,7 +272,7 @@ decode_char(char *source, int *target)
     int base = 16;
     const char digits[] = "0123456789abcdef";
 
-    T(("decode_char   '%s'", source));
+    TR(TRACE_IEVENT, ("decode_char   '%s'", source));
     *target = ' ';
     switch (*source) {
     case MARKER:
@@ -329,7 +329,7 @@ decode_chtype(char *source, chtype fillin, chtype *target)
     int color = PAIR_NUMBER((int) attr);
     int value;
 
-    T(("decode_chtype '%s'", source));
+    TR(TRACE_IEVENT, ("decode_chtype '%s'", source));
     source = decode_attr(source, &attr, &color);
     source = decode_char(source, &value);
     *target = (ChCharOf(value) | attr | (chtype) COLOR_PAIR(color));
@@ -347,7 +347,7 @@ decode_cchar(char *source, cchar_t *fillin, cchar_t *target)
     int append = 0;
     int value = 0;
 
-    T(("decode_cchar  '%s'", source));
+    TR(TRACE_IEVENT, ("decode_cchar  '%s'", source));
     *target = blank;
 #if NCURSES_EXT_COLORS
     color = fillin->ext_color;
@@ -542,7 +542,7 @@ NCURSES_SP_NAME(getwin) (NCURSES_SP_DCLx FILE *filep)
 	returnWin(0);
     }
 
-    if (tmp._flags & _ISPAD) {
+    if (IS_PAD(&tmp)) {
 	nwin = NCURSES_SP_NAME(newpad) (NCURSES_SP_ARGx
 					tmp._maxy + 1,
 					tmp._maxx + 1);
@@ -587,7 +587,7 @@ NCURSES_SP_NAME(getwin) (NCURSES_SP_DCLx FILE *filep)
 	nwin->_regtop = tmp._regtop;
 	nwin->_regbottom = tmp._regbottom;
 
-	if (tmp._flags & _ISPAD)
+	if (IS_PAD(&tmp))
 	    nwin->_pad = tmp._pad;
 
 	if (old_format) {
@@ -824,7 +824,7 @@ putwin(WINDOW *win, FILE *filep)
 	    attr_t attr;
 
 	    *buffer = '\0';
-	    if (!strncmp(name, "_pad.", (size_t) 5) && !(win->_flags & _ISPAD)) {
+	    if (!strncmp(name, "_pad.", (size_t) 5) && !IS_PAD(win)) {
 		continue;
 	    }
 	    switch (scr_params[y].type) {
@@ -940,6 +940,31 @@ putwin(WINDOW *win, FILE *filep)
     returnCode(code);
 }
 
+/*
+ * Replace a window covering the whole screen, i.e., newscr or curscr.
+ */
+static WINDOW *
+replace_window(WINDOW *target, FILE *source)
+{
+    WINDOW *result = getwin(source);
+#if NCURSES_EXT_FUNCS
+    if (result != NULL) {
+	if (getmaxx(result) != getmaxx(target)
+	    || getmaxy(result) != getmaxy(target)) {
+	    int code = wresize(result,
+			       1 + getmaxy(target),
+			       1 + getmaxx(target));
+	    if (code != OK) {
+		delwin(result);
+		result = NULL;
+	    }
+	}
+    }
+#endif
+    delwin(target);
+    return result;
+}
+
 NCURSES_EXPORT(int)
 NCURSES_SP_NAME(scr_restore) (NCURSES_SP_DCLx const char *file)
 {
@@ -949,9 +974,8 @@ NCURSES_SP_NAME(scr_restore) (NCURSES_SP_DCLx const char *file)
     T((T_CALLED("scr_restore(%p,%s)"), (void *) SP_PARM, _nc_visbuf(file)));
 
     if (_nc_access(file, R_OK) >= 0
-	&& (fp = fopen(file, BIN_R)) != 0) {
-	delwin(NewScreen(SP_PARM));
-	NewScreen(SP_PARM) = getwin(fp);
+	&& (fp = safe_fopen(file, BIN_R)) != 0) {
+	NewScreen(SP_PARM) = replace_window(NewScreen(SP_PARM), fp);
 #if !USE_REENTRANT
 	newscr = NewScreen(SP_PARM);
 #endif
@@ -980,7 +1004,7 @@ scr_dump(const char *file)
     T((T_CALLED("scr_dump(%s)"), _nc_visbuf(file)));
 
     if (_nc_access(file, W_OK) < 0
-	|| (fp = fopen(file, BIN_W)) == 0) {
+	|| (fp = safe_fopen(file, BIN_W)) == 0) {
 	result = ERR;
     } else {
 	(void) putwin(newscr, fp);
@@ -1007,9 +1031,8 @@ NCURSES_SP_NAME(scr_init) (NCURSES_SP_DCLx const char *file)
 	FILE *fp = 0;
 
 	if (_nc_access(file, R_OK) >= 0
-	    && (fp = fopen(file, BIN_R)) != 0) {
-	    delwin(CurScreen(SP_PARM));
-	    CurScreen(SP_PARM) = getwin(fp);
+	    && (fp = safe_fopen(file, BIN_R)) != 0) {
+	    CurScreen(SP_PARM) = replace_window(CurScreen(SP_PARM), fp);
 #if !USE_REENTRANT
 	    curscr = CurScreen(SP_PARM);
 #endif

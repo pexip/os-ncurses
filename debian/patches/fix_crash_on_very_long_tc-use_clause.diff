@@ -13,7 +13,7 @@ Last-Update: 2023-01-22
 
 --- a/progs/dump_entry.c
 +++ b/progs/dump_entry.c
-@@ -1641,15 +1641,25 @@ dump_entry(TERMTYPE2 *tterm,
+@@ -1651,15 +1651,25 @@ dump_entry(TERMTYPE2 *tterm,
  }
  
  void

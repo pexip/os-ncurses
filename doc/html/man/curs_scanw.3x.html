@@ -1,6 +1,6 @@
-<!-- 
+<!--
   ****************************************************************************
-  * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+  * Copyright 2018-2021,2022 Thomas E. Dickey                                *
   * Copyright 1998-2010,2017 Free Software Foundation, Inc.                  *
   *                                                                          *
   * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -27,7 +27,7 @@
   * sale, use or other dealings in this Software without prior written       *
   * authorization.                                                           *
   ****************************************************************************
-  * @Id: curs_scanw.3x,v 1.28 2020/10/24 09:29:26 tom Exp @
+  * @Id: curs_scanw.3x,v 1.32 2022/02/12 20:05:11 tom Exp @
 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
 <HTML>
@@ -36,7 +36,7 @@
 <meta name="generator" content="Manpage converted by man2html - see https://invisible-island.net/scripts/readme.html#others_scripts">
 <TITLE>curs_scanw 3x</TITLE>
 <link rel="author" href="mailto:bug-ncurses@gnu.org">
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
 </HEAD>
 <BODY>
 <H1 class="no-header">curs_scanw 3x</H1>
@@ -74,7 +74,7 @@
 
        The <STRONG>vwscanw</STRONG> and <STRONG>vw_scanw</STRONG> routines are  analogous  to  <STRONG>vscanf(3)</STRONG>.   They
        perform a <STRONG>wscanw</STRONG> using a variable argument list.  The third argument is
-       a <EM>va</EM><STRONG>_</STRONG><EM>list</EM>, a pointer to a list of arguments, as defined in <STRONG>&lt;stdarg.h&gt;</STRONG>.
+       a <STRONG>va_list</STRONG>, a pointer to a list of arguments, as defined in <STRONG>&lt;stdarg.h&gt;</STRONG>.
 
 
 </PRE><H2><a name="h2-RETURN-VALUE">RETURN VALUE</a></H2><PRE>
@@ -93,12 +93,12 @@
 </PRE><H2><a name="h2-HISTORY">HISTORY</a></H2><PRE>
        While  <STRONG>scanw</STRONG>  was implemented in 4BSD, none of the BSD releases used it
        until 4.4BSD (in a game).  That early version of curses was before  the
-       ANSI  C  standard.   It did not use &lt;varargs.h&gt;, though that was avail-
-       able.  In 1991 (a couple of years after SVr4 was  generally  available,
-       and  after  the C standard was published), other developers updated the
-       library, using &lt;stdarg.h&gt; internally in 4.4BSD curses.  Even with  this
-       improvement,  BSD  curses  did  not  use  function  prototypes (or even
-       declare functions) in the &lt;curses.h&gt; header until 1992.
+       ANSI  C  standard.   It  did  not  use  &lt;varargs.h&gt;,  though  that  was
+       available.  In 1991  (a  couple  of  years  after  SVr4  was  generally
+       available,  and  after  the C standard was published), other developers
+       updated the library, using  &lt;stdarg.h&gt;  internally  in  4.4BSD  curses.
+       Even  with this improvement, BSD curses did not use function prototypes
+       (or even declare functions) in the &lt;curses.h&gt; header until 1992.
 
        SVr2 documented <STRONG>scanw</STRONG>, <STRONG>wscanw</STRONG> tersely as  "scanf  through  <EM>stdscr</EM>"  and
        tersely as "scanf through <EM>win</EM>", respectively.
@@ -108,9 +108,9 @@
        be  output  from  <STRONG>scanf(3)</STRONG> would instead be output using <STRONG>waddstr</STRONG> on the
        given window.  SVr3 also added <STRONG>vwscanw</STRONG>, saying that the third parameter
        is  a  <STRONG>va_list</STRONG>, defined in &lt;varargs.h&gt;, and referring the reader to the
-       manual  pages  for  <EM>varargs</EM>  and  <EM>vprintf</EM>  for  detailed  descriptions.
-       (Because the SVr3 documentation does not mention <EM>vscanf</EM>, that reference
-       to <EM>vprintf</EM> may not be an error).
+       manual  pages  for  <EM>varargs</EM>  and  <STRONG>vprintf</STRONG>  for  detailed  descriptions.
+       (Because the SVr3 documentation does not mention <STRONG>vscanf</STRONG>, that reference
+       to <STRONG>vprintf</STRONG> may not be an error).
 
        SVr4  added  no  new  variations  of  <STRONG>scanw</STRONG>,  but  provided  for  using
        &lt;varargs.h&gt; or &lt;stdarg.h&gt; to define the <STRONG>va_list</STRONG> type.
@@ -144,16 +144,16 @@
            is  probably  an  editing error which was introduced in XSI, rather
            than being done intentionally.
 
-       <STRONG>o</STRONG>   This implementation returns the number of items scanned,  for  com-
-           patibility  with  SVr4  curses.   As  of  2018,  NetBSD curses also
+       <STRONG>o</STRONG>   This implementation  returns  the  number  of  items  scanned,  for
+           compatibility  with  SVr4  curses.   As of 2018, NetBSD curses also
            returns the number of  items  scanned.   Both  ncurses  and  NetBSD
            curses call <STRONG>vsscanf</STRONG> to scan the string, which returns <STRONG>EOF</STRONG> on error.
 
        <STRONG>o</STRONG>   Portable  applications should only test if the return value is <STRONG>ERR</STRONG>,
            since the <STRONG>OK</STRONG> value (zero) is likely to be misleading.
 
-           One possible way to get useful results would be to use a "%n"  con-
-           version  at  the  end of the format string to ensure that something
+           One possible way to get useful results  would  be  to  use  a  "%n"
+           conversion at the end of the format string to ensure that something
            was processed.
 
 

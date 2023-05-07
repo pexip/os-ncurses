@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 2008-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -52,7 +52,7 @@
 # endif
 #endif
 
-MODULE_ID("$Id: tinfo_driver.c,v 1.70 2020/08/29 21:03:50 tom Exp $")
+MODULE_ID("$Id: tinfo_driver.c,v 1.73 2022/08/13 14:36:43 tom Exp $")
 
 /*
  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
@@ -1282,10 +1282,7 @@ drv_read(TERMINAL_CONTROL_BLOCK * TCB, int *buf)
     assert(buf);
     SetSP();
 
-# if USE_PTHREADS_EINTR
-    if ((pthread_self) && (pthread_kill) && (pthread_equal))
-	_nc_globals.read_thread = pthread_self();
-# endif
+    _nc_set_read_thread(TRUE);
 #ifdef EXP_WIN32_DRIVER
     n = _nc_console_read(sp,
 			 _nc_console_handle(sp->_ifd),
@@ -1293,9 +1290,7 @@ drv_read(TERMINAL_CONTROL_BLOCK * TCB, int *buf)
 #else
     n = (int) read(sp->_ifd, &c2, (size_t) 1);
 #endif
-#if USE_PTHREADS_EINTR
-    _nc_globals.read_thread = 0;
-#endif
+    _nc_set_read_thread(FALSE);
 #ifndef EXP_WIN32_DRIVER
     *buf = (int) c2;
 #endif
@@ -1532,10 +1527,10 @@ _nc_get_driver(TERMINAL_CONTROL_BLOCK * TCB, const char *name, int *errret)
 	res = DriverTable[i].driver;
 #ifdef _NC_WINDOWS
 	if ((i + 1) == SIZEOF(DriverTable)) {
-	    /* For Windows >= 10.0.17763 Windows Console interface implements 
+	    /* For Windows >= 10.0.17763 Windows Console interface implements
 	       virtual Terminal functionality.
-	       If on Windows td_CanHandle returned FALSE althoug the terminal name
-	       is empty, we default to ms-terminal as tinfo TERM type.
+	       If on Windows td_CanHandle returned FALSE although the terminal
+	       name is empty, we default to ms-terminal as tinfo TERM type.
 	     */
 	    if (name == 0 || *name == 0 || (strcmp(name, "unknown") == 0)) {
 		name = MS_TERMINAL;

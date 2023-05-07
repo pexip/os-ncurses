@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -42,9 +42,7 @@
 
 #include <tic.h>
 
-MODULE_ID("$Id: read_entry.c,v 1.158 2020/08/22 20:49:46 tom Exp $")
-
-#define TYPE_CALLOC(type,elts) typeCalloc(type, (unsigned)(elts))
+MODULE_ID("$Id: read_entry.c,v 1.164 2022/05/08 00:11:44 tom Exp $")
 
 #define MyNumber(n) (short) LOW_MSB(n)
 
@@ -145,6 +143,7 @@ convert_strings(char *buf, char **Strings, int count, int size, char *table)
 {
     int i;
     char *p;
+    bool corrupt = FALSE;
 
     for (i = 0; i < count; i++) {
 	if (IS_NEG1(buf + 2 * i)) {
@@ -154,8 +153,20 @@ convert_strings(char *buf, char **Strings, int count, int size, char *table)
 	} else if (MyNumber(buf + 2 * i) > size) {
 	    Strings[i] = ABSENT_STRING;
 	} else {
-	    Strings[i] = (MyNumber(buf + 2 * i) + table);
-	    TR(TRACE_DATABASE, ("Strings[%d] = %s", i, _nc_visbuf(Strings[i])));
+	    int nn = MyNumber(buf + 2 * i);
+	    if (nn >= 0 && nn < size) {
+		Strings[i] = (nn + table);
+		TR(TRACE_DATABASE, ("Strings[%d] = %s", i,
+				    _nc_visbuf(Strings[i])));
+	    } else {
+		if (!corrupt) {
+		    corrupt = TRUE;
+		    TR(TRACE_DATABASE,
+		       ("ignore out-of-range index %d to Strings[]", nn));
+		    _nc_warning("corrupt data found in convert_strings");
+		}
+		Strings[i] = ABSENT_STRING;
+	    }
 	}
 
 	/* make sure all strings are NUL terminated */
@@ -203,6 +214,8 @@ _nc_init_termtype(TERMTYPE2 *const tp)
 {
     unsigned i;
 
+    DEBUG(2, (T_CALLED("_nc_init_termtype(tp=%p)"), (void *) tp));
+
 #if NCURSES_XNAMES
     tp->num_Booleans = BOOLCOUNT;
     tp->num_Numbers = NUMCOUNT;
@@ -226,6 +239,8 @@ _nc_init_termtype(TERMTYPE2 *const tp)
 
     for_each_string(i, tp)
 	tp->Strings[i] = ABSENT_STRING;
+
+    DEBUG(2, (T_RETURN("")));
 }
 
 #if NCURSES_USE_DATABASE
@@ -257,7 +272,6 @@ _nc_read_termtype(TERMTYPE2 *ptr, char *buffer, int limit)
     char buf[MAX_ENTRY_SIZE + 2];
     char *string_table;
     unsigned want, have;
-    bool need_ints;
     size_t (*convert_numbers) (char *, NCURSES_INT2 *, int);
     int size_of_numbers;
     int max_entry_size = MAX_ENTRY_SIZE;
@@ -276,7 +290,7 @@ _nc_read_termtype(TERMTYPE2 *ptr, char *buffer, int limit)
 	returnDB(TGETENT_NO);
     }
 #if NCURSES_EXT_NUMBERS
-    if ((need_ints = (LOW_MSB(buf) == MAGIC2))) {
+    if (LOW_MSB(buf) == MAGIC2) {
 	convert_numbers = convert_32bits;
 	size_of_numbers = SIZEOF_INT2;
     } else {
@@ -285,7 +299,7 @@ _nc_read_termtype(TERMTYPE2 *ptr, char *buffer, int limit)
 	size_of_numbers = SIZEOF_SHORT;
     }
 #else
-    if ((need_ints = (LOW_MSB(buf) == MAGIC2))) {
+    if (LOW_MSB(buf) == MAGIC2) {
 	convert_numbers = convert_32bits;
 	size_of_numbers = SIZEOF_32BITS;
     } else {
@@ -334,9 +348,8 @@ _nc_read_termtype(TERMTYPE2 *ptr, char *buffer, int limit)
 	offset = (int) (have - MAX_NAME_SIZE);
 
     /* grab the booleans */
-    if ((ptr->Booleans = TYPE_CALLOC(NCURSES_SBOOL,
-				     max(BOOLCOUNT, bool_count))) == 0
-	|| Read(ptr->Booleans, (unsigned) bool_count) < bool_count) {
+    TYPE_CALLOC(NCURSES_SBOOL, max(BOOLCOUNT, bool_count), ptr->Booleans);
+    if (Read(ptr->Booleans, (unsigned) bool_count) < bool_count) {
 	returnDB(TGETENT_NO);
     }
 
@@ -349,15 +362,13 @@ _nc_read_termtype(TERMTYPE2 *ptr, char *buffer, int limit)
     even_boundary(name_size + bool_count);
 
     /* grab the numbers */
-    if (!(ptr->Numbers = TYPE_CALLOC(NCURSES_INT2, max(NUMCOUNT, num_count)))
-	|| !read_numbers(buf, num_count)) {
+    TYPE_CALLOC(NCURSES_INT2, max(NUMCOUNT, num_count), ptr->Numbers);
+    if (!read_numbers(buf, num_count)) {
 	returnDB(TGETENT_NO);
     }
     convert_numbers(buf, ptr->Numbers, num_count);
 
-    if ((ptr->Strings = TYPE_CALLOC(char *, max(STRCOUNT, str_count))) == 0) {
-	returnDB(TGETENT_NO);
-    }
+    TYPE_CALLOC(char *, max(STRCOUNT, str_count), ptr->Strings);
 
     if (str_count) {
 	/* grab the string offsets */
@@ -498,9 +509,7 @@ _nc_read_termtype(TERMTYPE2 *ptr, char *buffer, int limit)
 	    if (ext_str_count >= (max_entry_size / 2)) {
 		returnDB(TGETENT_NO);
 	    }
-	    if ((ptr->ext_Names = TYPE_CALLOC(char *, need)) == 0) {
-		returnDB(TGETENT_NO);
-	    }
+	    TYPE_CALLOC(char *, need, ptr->ext_Names);
 	    TR(TRACE_DATABASE,
 	       ("ext_NAMES starting @%d in extended_strings, first = %s",
 		base, _nc_visbuf(ptr->ext_str_table + base)));
@@ -553,7 +562,7 @@ _nc_read_file_entry(const char *const filename, TERMTYPE2 *ptr)
     int code;
 
     if (_nc_access(filename, R_OK) < 0
-	|| (fp = fopen(filename, BIN_R)) == 0) {
+	|| (fp = safe_fopen(filename, BIN_R)) == 0) {
 	TR(TRACE_DATABASE, ("cannot open terminfo %s (errno=%d)", filename, errno));
 	code = TGETENT_NO;
     } else {
@@ -666,11 +675,10 @@ decode_hex(const char **source)
 {
     int result = 0;
     int nibble;
-    int ch;
 
     for (nibble = 0; nibble < 2; ++nibble) {
+	int ch = UChar(**source);
 	result <<= 4;
-	ch = UChar(**source);
 	*source += 1;
 	if (ch >= '0' && ch <= '9') {
 	    ch -= '0';
@@ -776,7 +784,7 @@ _nc_read_tic_entry(char *filename,
 	 * looking for compiled (binary) terminfo data.
 	 *
 	 * cgetent uses a two-level lookup.  On the first it uses the given
-	 * name to return a record containing only the aliases for an entry. 
+	 * name to return a record containing only the aliases for an entry.
 	 * On the second (using that list of aliases as a key), it returns the
 	 * content of the terminal description.  We expect second lookup to
 	 * return data beginning with the same set of aliases.
@@ -833,7 +841,7 @@ _nc_read_tic_entry(char *filename,
 #endif /* NCURSES_USE_DATABASE */
 
 /*
- * Find and read the compiled entry for a given terminal type, if it exists. 
+ * Find and read the compiled entry for a given terminal type, if it exists.
  * We take pains here to make sure no combination of environment variables and
  * terminal type name can be used to overrun the file buffer.
  */

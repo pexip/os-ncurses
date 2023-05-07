@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 2019-2020,2022 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -45,7 +45,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_addstr.c,v 1.56 2020/02/02 23:34:34 tom Exp $")
+MODULE_ID("$Id: lib_addstr.c,v 1.58 2022/06/11 20:12:04 tom Exp $")
 
 NCURSES_EXPORT(int)
 waddnstr(WINDOW *win, const char *astr, int n)
@@ -59,11 +59,12 @@ waddnstr(WINDOW *win, const char *astr, int n)
 	TR(TRACE_VIRTPUT | TRACE_ATTRS,
 	   ("... current %s", _traceattr(WINDOW_ATTRS(win))));
 	code = OK;
-	if (n < 0)
-	    n = (int) strlen(astr);
 
-	TR(TRACE_VIRTPUT, ("str is not null, length = %d", n));
-	while ((n-- > 0) && (*str != '\0')) {
+	TR(TRACE_VIRTPUT, ("str is not null, length = %d",
+			   ((n > 0) ? n : (int) strlen(str))));
+	if (n < 0)
+	    n = INT_MAX;
+	while ((*str != '\0') && (n-- > 0)) {
 	    NCURSES_CH_T ch;
 	    TR(TRACE_VIRTPUT, ("*str = %#o", UChar(*str)));
 	    SetChar(ch, UChar(*str++), A_NORMAL);
@@ -231,11 +232,12 @@ waddnwstr(WINDOW *win, const wchar_t *str, int n)
 	TR(TRACE_VIRTPUT | TRACE_ATTRS,
 	   ("... current %s", _traceattr(WINDOW_ATTRS(win))));
 	code = OK;
-	if (n < 0)
-	    n = (int) wcslen(str);
 
-	TR(TRACE_VIRTPUT, ("str is not null, length = %d", n));
-	while ((n-- > 0) && (*str != L('\0'))) {
+	TR(TRACE_VIRTPUT, ("str is not null, length = %d",
+			   ((n > 0) ? n : (int) wcslen(str))));
+	if (n < 0)
+	    n = INT_MAX;
+	while ((*str != L('\0')) && (n-- > 0)) {
 	    NCURSES_CH_T ch;
 	    TR(TRACE_VIRTPUT, ("*str[0] = %#lx", (unsigned long) *str));
 	    SetChar(ch, *str++, A_NORMAL);
