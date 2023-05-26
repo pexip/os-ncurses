@@ -95,6 +95,7 @@ libtinfo.so.5 libtinfo5 #MINVER#
  _nc_curr_col@NCURSES_TINFO_5.0.19991023 6
  _nc_curr_line@NCURSES_TINFO_5.0.19991023 6
  _nc_doalloc@NCURSES_TINFO_5.0.19991023 6
+ _nc_env_access@NCURSES_TINFO_5.2.20001021 6.2+20201114-2+deb11u2~
  _nc_err_abort@NCURSES_TINFO_5.0.19991023 6
  _nc_fallback@NCURSES_TINFO_5.0.19991023 6
  _nc_find_entry@NCURSES_TINFO_5.0.19991023 6
