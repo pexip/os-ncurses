@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 1998-2012,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -34,7 +34,7 @@
  ****************************************************************************/
 
 /*
- * $Id: tic.h,v 1.81 2020/02/02 23:34:34 tom Exp $
+ * $Id: tic.h,v 1.86 2022/09/17 16:01:45 tom Exp $
  *	tic.h - Global variables and structures for the terminfo compiler.
  */
 
@@ -135,8 +135,7 @@ extern "C" {
 #define DEBUG_LEVEL(n)	((n) << TRACE_SHIFT)
 
 #define set_trace_level(n) \
-	_nc_tracing &= DEBUG_LEVEL(MAX_DEBUG_LEVEL) \
-		     + DEBUG_LEVEL(MAX_DEBUG_LEVEL) - 1, \
+	_nc_tracing &= TRACE_MAXIMUM, \
 	_nc_tracing |= DEBUG_LEVEL(n)
 
 #ifdef TRACE
@@ -302,11 +301,11 @@ extern NCURSES_EXPORT_VAR(long) _nc_start_line;
 
 /* comp_error.c: warning & abort messages */
 extern NCURSES_EXPORT(const char *) _nc_get_source (void);
-extern NCURSES_EXPORT(void) _nc_err_abort (const char *const,...) GCC_PRINTFLIKE(1,2) GCC_NORETURN;
+extern GCC_NORETURN NCURSES_EXPORT(void) _nc_err_abort (const char *const,...) GCC_PRINTFLIKE(1,2);
 extern NCURSES_EXPORT(void) _nc_get_type (char *name);
 extern NCURSES_EXPORT(void) _nc_set_source (const char *const);
 extern NCURSES_EXPORT(void) _nc_set_type (const char *const);
-extern NCURSES_EXPORT(void) _nc_syserr_abort (const char *const,...) GCC_PRINTFLIKE(1,2) GCC_NORETURN;
+extern GCC_NORETURN NCURSES_EXPORT(void) _nc_syserr_abort (const char *const,...) GCC_PRINTFLIKE(1,2);
 extern NCURSES_EXPORT(void) _nc_warning (const char *const,...) GCC_PRINTFLIKE(1,2);
 extern NCURSES_EXPORT_VAR(bool) _nc_suppress_warnings;
 
@@ -337,7 +336,8 @@ extern NCURSES_EXPORT_VAR(const struct tinfo_fkeys) _nc_tinfo_fkeys[];
 
 extern NCURSES_EXPORT_VAR(int) _nc_tparm_err;
 
-extern NCURSES_EXPORT(int) _nc_tparm_analyze(const char *, char **, int *);
+extern NCURSES_EXPORT(int) _nc_tparm_analyze(TERMINAL *, const char *, char **, int *);
+extern NCURSES_EXPORT(void) _nc_reset_tparm(TERMINAL *);
 
 /* lib_trace.c */
 extern NCURSES_EXPORT_VAR(unsigned) _nc_tracing;

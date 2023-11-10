@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -85,7 +85,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_mouse.c,v 1.191 2020/06/13 21:05:02 tom Exp $")
+MODULE_ID("$Id: lib_mouse.c,v 1.197 2022/08/13 14:13:12 tom Exp $")
 
 #include <tic.h>
 
@@ -419,13 +419,22 @@ init_xterm_mouse(SCREEN *sp)
     } else {
 	int code = tigetnum("XM");
 	switch (code) {
+#ifdef EXP_XTERM_1005
+	case 1005:
+	    /* see "xterm+sm+1005" */
+	    sp->_mouse_xtermcap = "\033[?1005;1000%?%p1%{1}%=%th%el%;";
+	    sp->_mouse_format = MF_XTERM_1005;
+	    break;
+#endif
 	case 1006:
+	    /* see "xterm+sm+1006" */
+	    sp->_mouse_xtermcap = "\033[?1006;1000%?%p1%{1}%=%th%el%;";
+	    sp->_mouse_format = MF_SGR1006;
 	    break;
 	default:
-	    code = 1000;
+	    sp->_mouse_xtermcap = "\033[?1000%?%p1%{1}%=%th%el%;";
 	    break;
 	}
-	sp->_mouse_xtermcap = "\033[?1000%?%p1%{1}%=%th%el%;";
     }
 }
 #endif
@@ -960,6 +969,17 @@ handle_wheel(SCREEN *sp, MEVENT * eventp, int button, int wheel)
 	PRESS_POSITION(3);
 	break;
     default:
+	/*
+	 * case 3 is sent when the mouse buttons are released.
+	 *
+	 * If the terminal uses xterm mode 1003, a continuous series of
+	 * button-release events is sent as the mouse moves around the screen,
+	 * or as the wheel mouse is rotated.
+	 *
+	 * Return false in this case, so that when running in X10 mode, we will
+	 * recalculate bstate.
+	 */
+	eventp->bstate = REPORT_MOUSE_POSITION;
 	result = FALSE;
 	break;
     }
@@ -978,7 +998,7 @@ decode_X10_bstate(SCREEN *sp, MEVENT * eventp, unsigned intro)
     if (intro >= 96) {
 	if (intro >= 160) {
 	    button = (int) (intro - 152);	/* buttons 8-11 */
-	} else if (intro >= 96) {
+	} else {
 	    button = (int) (intro - 92);	/* buttons 4-7 */
 	}
     } else {
@@ -1065,12 +1085,7 @@ decode_xterm_X10(SCREEN *sp, MEVENT * eventp)
     int res;
     bool result;
 
-# if USE_PTHREADS_EINTR
-#  if USE_WEAK_SYMBOLS
-    if ((pthread_self) && (pthread_kill) && (pthread_equal))
-#  endif
-	_nc_globals.read_thread = pthread_self();
-# endif
+    _nc_set_read_thread(TRUE);
     for (grabbed = 0; grabbed < MAX_KBUF; grabbed += (size_t) res) {
 
 	/* For VIO mouse we add extra bit 64 to disambiguate button-up. */
@@ -1084,9 +1099,7 @@ decode_xterm_X10(SCREEN *sp, MEVENT * eventp)
 	if (res == -1)
 	    break;
     }
-#if USE_PTHREADS_EINTR
-    _nc_globals.read_thread = 0;
-#endif
+    _nc_set_read_thread(FALSE);
     kbuf[MAX_KBUF] = '\0';
 
     TR(TRACE_IEVENT,
@@ -1120,12 +1133,7 @@ decode_xterm_1005(SCREEN *sp, MEVENT * eventp)
     coords[0] = 0;
     coords[1] = 0;
 
-# if USE_PTHREADS_EINTR
-#  if USE_WEAK_SYMBOLS
-    if ((pthread_self) && (pthread_kill) && (pthread_equal))
-#  endif
-	_nc_globals.read_thread = pthread_self();
-# endif
+    _nc_set_read_thread(TRUE);
     for (grabbed = 0; grabbed < limit;) {
 	int res;
 
@@ -1158,9 +1166,7 @@ decode_xterm_1005(SCREEN *sp, MEVENT * eventp)
 		break;
 	}
     }
-#if USE_PTHREADS_EINTR
-    _nc_globals.read_thread = 0;
-#endif
+    _nc_set_read_thread(FALSE);
 
     TR(TRACE_IEVENT,
        ("_nc_mouse_inline sees the following xterm data: %s",
@@ -1204,12 +1210,7 @@ read_SGR(SCREEN *sp, SGR_DATA * result)
     int marker = 1;
 
     memset(result, 0, sizeof(*result));
-# if USE_PTHREADS_EINTR
-#  if USE_WEAK_SYMBOLS
-    if ((pthread_self) && (pthread_kill) && (pthread_equal))
-#  endif
-	_nc_globals.read_thread = pthread_self();
-# endif
+    _nc_set_read_thread(TRUE);
 
     do {
 	int res;
@@ -1274,9 +1275,7 @@ read_SGR(SCREEN *sp, SGR_DATA * result)
 	}
 	++grabbed;
     } while (!isFinal(ch));
-#if USE_PTHREADS_EINTR
-    _nc_globals.read_thread = 0;
-#endif
+    _nc_set_read_thread(FALSE);
 
     kbuf[++grabbed] = 0;
     TR(TRACE_IEVENT,
@@ -1560,7 +1559,7 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
 		if (changed) {
 		    merge = FALSE;
 		    for (b = 1; b <= MAX_BUTTONS; ++b) {
-			if ((sp->_mouse_mask & MASK_CLICK(b))
+			if ((sp->_mouse_mask2 & MASK_CLICK(b))
 			    && (ep->bstate & MASK_PRESS(b))) {
 			    next->bstate &= ~MASK_RELEASE(b);
 			    next->bstate |= MASK_CLICK(b);
@@ -1641,7 +1640,7 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
 		&& (next->bstate & BUTTON_CLICKED)) {
 		merge = FALSE;
 		for (b = 1; b <= MAX_BUTTONS; ++b) {
-		    if ((sp->_mouse_mask & MASK_DOUBLE_CLICK(b))
+		    if ((sp->_mouse_mask2 & MASK_DOUBLE_CLICK(b))
 			&& (ep->bstate & MASK_CLICK(b))
 			&& (next->bstate & MASK_CLICK(b))) {
 			next->bstate &= ~MASK_CLICK(b);
@@ -1659,7 +1658,7 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
 		&& (next->bstate & BUTTON_CLICKED)) {
 		merge = FALSE;
 		for (b = 1; b <= MAX_BUTTONS; ++b) {
-		    if ((sp->_mouse_mask & MASK_TRIPLE_CLICK(b))
+		    if ((sp->_mouse_mask2 & MASK_TRIPLE_CLICK(b))
 			&& (ep->bstate & MASK_DOUBLE_CLICK(b))
 			&& (next->bstate & MASK_CLICK(b))) {
 			next->bstate &= ~MASK_CLICK(b);
@@ -1719,7 +1718,8 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
 #endif /* TRACE */
 
     /* after all this, do we have a valid event? */
-    return ValidEvent(PREV(first_invalid));
+    ep = PREV(first_invalid);
+    return ValidEvent(ep) && ((ep->bstate & sp->_mouse_mask) != 0);
 }
 
 static void

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -37,7 +37,7 @@
 /*
  *	lib_trace.c - Tracing/Debugging routines
  *
- * The _tracef() function is originally from pcurses (by Pavel Curtis) in 1982. 
+ * The _tracef() function is originally from pcurses (by Pavel Curtis) in 1982.
  * pcurses allowed one to enable/disable tracing using traceon() and traceoff()
  * functions.  ncurses provides a trace() function which allows one to
  * selectively enable or disable several tracing features.
@@ -48,7 +48,7 @@
 
 #include <ctype.h>
 
-MODULE_ID("$Id: lib_trace.c,v 1.97 2020/08/29 16:22:03 juergen Exp $")
+MODULE_ID("$Id: lib_trace.c,v 1.101 2022/09/17 14:57:02 tom Exp $")
 
 NCURSES_EXPORT_VAR(unsigned) _nc_tracing = 0; /* always define this */
 
@@ -94,12 +94,47 @@ NCURSES_EXPORT_VAR(long) _nc_outchars = 0;
 #define MyNested	_nc_globals.nested_tracef
 #endif /* TRACE */
 
+#if USE_REENTRANT
+#define Locked(statement) { \
+	_nc_lock_global(tst_tracef); \
+	statement; \
+	_nc_unlock_global(tst_tracef); \
+    }
+#else
+#define Locked(statement) statement
+#endif
+
 NCURSES_EXPORT(unsigned)
 curses_trace(unsigned tracelevel)
 {
     unsigned result;
+
 #if defined(TRACE)
-    result = _nc_tracing;
+    int bit;
+
+#define DATA(name) { name, #name }
+    static struct {
+	unsigned mask;
+	const char *name;
+    } trace_names[] = {
+	DATA(TRACE_TIMES),
+	    DATA(TRACE_TPUTS),
+	    DATA(TRACE_UPDATE),
+	    DATA(TRACE_MOVE),
+	    DATA(TRACE_CHARPUT),
+	    DATA(TRACE_CALLS),
+	    DATA(TRACE_VIRTPUT),
+	    DATA(TRACE_IEVENT),
+	    DATA(TRACE_BITS),
+	    DATA(TRACE_ICALLS),
+	    DATA(TRACE_CCALLS),
+	    DATA(TRACE_DATABASE),
+	    DATA(TRACE_ATTRS)
+    };
+#undef DATA
+
+    Locked(result = _nc_tracing);
+
     if ((MyFP == 0) && tracelevel) {
 	MyInit = TRUE;
 	if (MyFD >= 0) {
@@ -118,16 +153,17 @@ curses_trace(unsigned tracelevel)
 		    _nc_STRCAT(MyPath, ".log", sizeof(MyPath));
 		}
 	    }
+#define SAFE_MODE (O_CREAT | O_EXCL | O_RDWR)
 	    if (_nc_access(MyPath, W_OK) < 0
-		|| (MyFD = open(MyPath, O_CREAT | O_EXCL | O_RDWR, 0600)) < 0
+		|| (MyFD = safe_open3(MyPath, SAFE_MODE, 0600)) < 0
 		|| (MyFP = fdopen(MyFD, BIN_W)) == 0) {
 		;		/* EMPTY */
 	    }
 	}
-	_nc_tracing = tracelevel;
+	Locked(_nc_tracing = tracelevel);
 	/* Try to set line-buffered mode, or (failing that) unbuffered,
 	 * so that the trace-output gets flushed automatically at the
-	 * end of each line.  This is useful in case the program dies. 
+	 * end of each line.  This is useful in case the program dies.
 	 */
 	if (MyFP != 0) {
 #if HAVE_SETVBUF		/* ANSI */
@@ -140,15 +176,33 @@ curses_trace(unsigned tracelevel)
 		NCURSES_VERSION,
 		NCURSES_VERSION_PATCH,
 		tracelevel);
+
+#define SPECIAL_MASK(mask) \
+	    if ((tracelevel & mask) == mask) \
+		_tracef("- %s (%u)", #mask, mask)
+
+	for (bit = 0; bit < TRACE_SHIFT; ++bit) {
+	    unsigned mask = (1U << bit) & tracelevel;
+	    if ((mask & trace_names[bit].mask) != 0) {
+		_tracef("- %s (%u)", trace_names[bit].name, mask);
+	    }
+	}
+	SPECIAL_MASK(TRACE_MAXIMUM);
+	else
+	SPECIAL_MASK(TRACE_ORDINARY);
+
+	if (tracelevel > TRACE_MAXIMUM) {
+	    _tracef("- DEBUG_LEVEL(%u)", tracelevel >> TRACE_SHIFT);
+	}
     } else if (tracelevel == 0) {
 	if (MyFP != 0) {
 	    MyFD = dup(MyFD);	/* allow reopen of same file */
 	    fclose(MyFP);
 	    MyFP = 0;
 	}
-	_nc_tracing = tracelevel;
+	Locked(_nc_tracing = tracelevel);
     } else if (_nc_tracing != tracelevel) {
-	_nc_tracing = tracelevel;
+	Locked(_nc_tracing = tracelevel);
 	_tracef("tracelevel=%#x", tracelevel);
     }
 #else

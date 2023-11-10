@@ -1,5 +1,5 @@
 ##############################################################################
-# Copyright 2018-2019,2020 Thomas E. Dickey                                  #
+# Copyright 2018-2021,2022 Thomas E. Dickey                                  #
 # Copyright 1998-2017,2018 Free Software Foundation, Inc.                    #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
@@ -26,7 +26,7 @@
 # use or other dealings in this Software without prior written               #
 # authorization.                                                             #
 ##############################################################################
-# $Id: dist.mk,v 1.1385 2020/11/14 13:10:13 tom Exp $
+# $Id: dist.mk,v 1.1519 2022/12/31 20:43:21 tom Exp $
 # Makefile for creating ncurses distributions.
 #
 # This only needs to be used directly as a makefile by developers, but
@@ -37,8 +37,8 @@ SHELL = /bin/sh
 
 # These define the major/minor/patch versions of ncurses.
 NCURSES_MAJOR = 6
-NCURSES_MINOR = 2
-NCURSES_PATCH = 20201114
+NCURSES_MINOR = 4
+NCURSES_PATCH = 20221231
 
 # We don't append the patch to the version, since this only applies to releases
 VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
@@ -97,7 +97,7 @@ doc/hackguide.doc: doc/html/hackguide.html
 # If that conflicts with the --without-manpage-renames, you can install those
 # in a different location using the --with-install-prefix option of the
 # configure script.
-MANPROG	= tbl | nroff -mandoc -rLL=78n -rLT=78n -Tascii
+MANPROG	= tbl | nroff -mandoc -rHY=0 -rLL=78n -rLT=78n -Tascii
 
 manhtml:
 	@for f in doc/html/man/*.html; do \
@@ -126,16 +126,15 @@ manhtml:
 	@misc/csort < subst.tmp | uniq > subst.sed
 	@echo '/<\/TITLE>/a\' >> subst.sed
 	@echo '<link rel="author" href="mailto:bug-ncurses@gnu.org">\' >> subst.sed
-	@echo '<meta http-equiv="Content-Type" content="text\/html; charset=iso-8859-1">' >> subst.sed
 	@rm -f subst.tmp
 	@for f in man/*.[0-9]* ; do \
 	   m=`basename $$f` ;\
-	   T=`egrep '^.TH' $$f|sed -e 's/^.TH //' -e s'/"//g' -e 's/[ 	]\+$$//'` ; \
+	   T=`$${EGREP-grep -E} '^.TH' $$f|sed -e 's/^.TH //' -e s'/"//g' -e 's/[ 	]\+$$//'` ; \
 	   g=$${m}.html ;\
 	   if [ -f doc/html/$$g ]; then chmod +w doc/html/$$g; fi;\
 	   echo "Converting $$m to HTML" ;\
-	   echo '<!-- ' > doc/html/man/$$g ;\
-	   egrep '^.\\"[^#]' $$f | \
+	   echo '<!--' > doc/html/man/$$g ;\
+	   $${EGREP-grep -E} '^.\\"[^#]' $$f | \
 	   	sed	-e 's/\$$/@/g' \
 			-e 's/^.../  */' \
 			-e 's/</\&lt;/g' \
