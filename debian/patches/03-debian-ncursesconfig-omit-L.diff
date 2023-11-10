@@ -12,11 +12,11 @@ Description: Omit -L part from ncurses6{w,}-config output
 Bug-Debian: https://bugs.debian.org/638281
 Bug-Debian: https://bugs.debian.org/745479
 Forwarded: not-needed
-Last-Update: 2019-10-21
+Last-Update: 2022-12-26
 
 ---
- misc/ncurses-config.in |    4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ misc/ncurses-config.in |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 --- a/misc/ncurses-config.in
 +++ b/misc/ncurses-config.in
@@ -28,17 +28,24 @@ Last-Update: 2019-10-21
  datarootdir="@datarootdir@"
  datadir="@datadir@"
  mandir="@mandir@"
-@@ -113,7 +112,7 @@ do
- 	-L*)
- 		[ -d ${opt##-L} ] || continue
- 		case ${opt##-L} in
+@@ -120,13 +119,13 @@ do
+ 		lib_check=`echo "x$opt" | sed -e 's/^.-L//'`
+ 		[ -d "$lib_check" ] || continue
+ 		case "$lib_check" in
 -		@LD_SEARCHPATH@) # skip standard libdir
 +		*) # skip standard libdir
- 			continue
- 			;;
- 		*)
-@@ -235,7 +234,6 @@ ENDECHO
- 		echo $INCS
+ 			if [ "$lib_check" = "$libdir" ]
+ 			then
+ 				lib_first=yes
+ 				IFS_save="$IFS"
+ 				IFS='|'
+-				LIBDIRS="@LD_SEARCHPATH@"
++				LIBDIRS=""
+ 				for lib_check in $LIBDIRS
+ 				do
+ 					if [ -d "$lib_check" ]
+@@ -274,7 +273,6 @@ ENDECHO
+ 		echo "$INCS"
  		;;
  	--libdir)
 -		echo "${libdir}"

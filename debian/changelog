@@ -1,43 +1,182 @@
-ncurses (6.2+20201114-2+deb11u2pexip1) pexip; urgency=medium
+ncurses (6.4-4) unstable; urgency=medium
 
-  * New upstream release
+  * Run autoconf-dickey in the toplevel and test/ directories rather
+    than autoreconf-dickey, as the latter picks up the backup file of
+    configure.in below the .pc/ directory, which is unwanted and does
+    not work (Closes: #1035621).
 
- -- Steve McIntyre <steve.mcintyre@pexip.com>  Fri, 09 Oct 2023 15:06:33 +0100
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 07 May 2023 16:33:47 +0200
 
-ncurses (6.2+20201114-2+deb11u2) bullseye; urgency=medium
+ncurses (6.4-3) unstable; urgency=medium
 
   * Configure with "--disable-root-environ" to disallow loading of
     custom terminfo entries in setuid/setgid programs, mitigating the
     impact of CVE-2023-29491 (see #1034372).
     - Update the symbols files for the newly exported symbol
       _nc_env_access.
+    - New patch fix-configure-root-args-option.diff cherry-picked from
+      the 20230415 patchlevel, fixing a copy/paste error which caused
+      the "--disable-root-environ" configure option to pick up code
+      meant to be used by the "--disable-root-args" option instead.
     - New patch debian-env-access.diff, changing the behavior of the
       "--disable-root-environ" configure option to not restrict programs
       run by the superuser, equivalent to the "--disable-setuid-environ"
       option introduced in the 20230423 patchlevel.
 
- -- Sven Joachim <svenjoac@gmx.de>  Fri, 26 May 2023 20:31:08 +0200
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 06 May 2023 17:16:54 +0200
+
+ncurses (6.4-2) unstable; urgency=medium
+
+  * Add Breaks against vim-common (<< 2:9.0.1000-2) to ncurses-base
+    and ncurses-term (Closes: #1027435).
+  * New patch fix_crash_on_very_long_tc-use_clause.diff, cherry-picked
+    from the 20230121 patchlevel: correct limit-check when dumping tc/use
+    clause via tic -I (report by Gabriel Ravier, Closes: #1029399).
+  * Work around dh_strip bug #875780 by stripping libncurses++w.a manually
+    (Closes: #1029404).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 25 Jan 2023 21:21:49 +0100
+
+ncurses (6.4-1) unstable; urgency=medium
+
+  * New upstream release.
+    - Correct PS vs PE names in bracketed+paste (report by Bram
+      Moolenaar, Addresses: #1027435).
+  * Update symbols files and bump shlibs.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 02 Jan 2023 08:49:50 +0100
+
+ncurses (6.3+20221224-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 27 Dec 2022 21:00:02 +0100
+
+ncurses (6.3+20221224-1) experimental; urgency=medium
+
+  * New upstream patchlevel.
+    - Revise kon/kon2/jfbterm to undo "linux2.6" change to
+      smacs/rmacs/enacs (Closes: #1012800).
+    - Improve pointer/limit checks associated with deleting a screen
+      (Closes: #1015756).
+  * Refresh Debian patches.
+  * Convert lintian overrides to the new format in Lintian 2.115.
+  * Add a new override for source-is-missing in the Ada documentation
+    (see #1019980).
+  * Upgrade Standards-Version to 4.6.2, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 26 Dec 2022 20:22:07 +0100
+
+ncurses (6.3+20220423-2) unstable; urgency=medium
+
+  * Update patch 02-debian-xterm.diff: drop "dec+sl" from xterm-new and
+    derived terminfo descriptions (Closes: #1010270).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 05 May 2022 19:01:43 +0200
+
+ncurses (6.3+20220423-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Add a limit-check to guard against corrupt terminfo data
+      (report/testcase by NCNIPC of China (CVE-2022-29458),
+      Closes: #1009870).
+    - Minor clarification to clear.1 (Closes: #999437).
+  * Refresh Debian patches.
+  * Update symbols files.
+  * Ensure that the README file in ncurses-examples has correct
+    permissions (Closes: #1003929).
+  * Add a lintian override to ncurses-examples for a false positive
+    bash-term-in-posix-shell in tput-initc.
+  * Update debian/ncurses-term.links to avoid a broken symlink
+    /usr/share/terminfo/r/rxvt-color.
+  * Remove libmd-dev build dependency on kfreebsd, no longer needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 26 Apr 2022 19:52:23 +0200
+
+ncurses (6.3-2) unstable; urgency=medium
+
+  * Add Breaks on neovim (<< 0.6.0) to ncurses-base (Closes: #999777).
+  * Drop patch 02-debian-drop-rin-from-screen-256color.diff
+    (Closes: #1003546).  Tmux users should upgrade to version 3.0 or
+    higher, or set TERM to something else than screen-256color.
+  * Make ncurses-base the primary package into which the Debian FAQ
+    and TODO files are installed.
+  * Add libmd-dev to Build-Depends on kfreebsd-any to work around FTBFS
+    if /usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig does not exist.
+  * Install the example programs into /usr/libexec/ncurses-examples.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 17 Jan 2022 18:02:04 +0100
+
+ncurses (6.3-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update symbols files and bump shlibs.
+    - Update the minimal version for symbols added after the 6.2 release
+      to 6.3.
+  * Drop the lintian override for ncurses-examples introduced in version
+    6.1+20181013-2, it no longer triggers.
+  * Do not force removal of obsolete packages which terminfo files have
+    been taken over by ncurses-term (Closes: #994433).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 15 Nov 2021 17:54:06 +0100
+
+ncurses (6.2+20210905-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+    - Extend --disable-pkg-ldflags option to also control whether
+      $LDFLAGS from the build is provided in -config and .pc files.
+      Use that option in debian/rules (Closes: #986764).
+    - Drop symbols GCC_PRINTF and GCC_SCANF from curses.h.in, to
+      simplify use (Closes: #993179).
+  * Drop patch 02-fix-mlterm.diff, applied upstream.
+  * Refresh remaining Debian patches.
+  * Update symbols files for new symbols erasewchar_sp, killwchar_sp
+    and _nc_reset_tparm.
+  * Bump autoconf-dickey build dependency to (>= 2.52+20210509), as per
+    test/configure.in.
+  * Ship stterm and stterm-256color terminfo entries in ncurses-term.
+  * Take over terminfo entries from the deceased Debian packages
+    jfbterm, kon2, libiterm1 and tn5250 in ncurses-term.
+  * Update list of terminfo entries shipped by other Debian packages.
+  * Update years in debian/copyright.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 09 Sep 2021 19:56:22 +0200
+
+ncurses (6.2+20201114-4) unstable; urgency=medium
+
+  * Source-only upload for migration to testing, no changes.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 26 Aug 2021 18:39:10 +0200
+
+ncurses (6.2+20201114-3) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Remove constraints unnecessary since stretch:
+    + ncurses-term: Drop versioned constraint on suckless-tools in Replaces.
+    + ncurses-term: Drop versioned constraint on suckless-tools in Breaks.
+    + libtinfo5: Drop versioned constraint on dialog in Breaks.
+
+  [ Jordi Mallach ]
+  * Introduce a libncursesw6-udeb package, needed by newer nano versions
+    (Closes: #976275).
+
+  [ Sven Joachim ]
+  * Add new upstream signing key 19882D92DDA4C400C22C0D56CC2AF4472167BE03
+    to debian/upstream/signing-key.asc.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 22 Aug 2021 08:29:53 +0200
+
+ncurses (6.2+20201114-2+deb11u2pexip1) pexip; urgency=medium
+
+  * New upstream release
+
+ -- Steve McIntyre <steve.mcintyre@pexip.com>  Fri, 09 Oct 2023 15:06:33 +0100
 
 ncurses (6.2+20201114-2+deb11u1pexip1) pexip; urgency=medium
 
   * New upstream release with security fixes
 
  -- Steve McIntyre <steve.mcintyre@pexip.com>  Fri, 05 May 2023 16:12:53 +0100
-
-ncurses (6.2+20201114-2+deb11u1) bullseye; urgency=medium
-
-  * New patch CVE-2022-29458.diff: add a limit-check to guard against
-    corrupt terminfo data (report/testcase by NCNIPC of China,
-    CVE-2022-29458), fix backported from the 20220416 upstream patchlevel
-    (Closes: #1009870).  Thanks to Thorsten Alteholz for the patch.
-  * New patch fix_crash_on_very_long_tc-use_clause.diff, cherry-picked
-    from the 20230121 patchlevel: correct limit-check when dumping tc/use
-    clause via tic -I (report by Gabriel Ravier, Closes: #1029399).
-  * Use bullseye as the release in the Salsa CI pipeline.
-  * Add a lintian override for source-is-missing in the Ada documentation
-    (see #1019980).
-
- -- Sven Joachim <svenjoac@gmx.de>  Wed, 08 Feb 2023 20:16:03 +0100
 
 ncurses (6.2+20201114-2pexip4) pexip-bullseye; urgency=medium
 

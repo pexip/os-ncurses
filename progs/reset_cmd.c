@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2019,2020 Thomas E. Dickey                                     *
+ * Copyright 2019-2020,2021 Thomas E. Dickey                                *
  * Copyright 2016,2017 Free Software Foundation, Inc.                       *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -47,13 +47,13 @@
 #endif
 
 #if NEED_PTEM_H
-/* they neglected to define struct winsize in termios.h -- it's only
+/* they neglected to define struct winsize in termios.h -- it is only
    in termio.h	*/
 #include <sys/stream.h>
 #include <sys/ptem.h>
 #endif
 
-MODULE_ID("$Id: reset_cmd.c,v 1.23 2020/09/05 22:54:47 tom Exp $")
+MODULE_ID("$Id: reset_cmd.c,v 1.28 2021/10/02 18:08:44 tom Exp $")
 
 /*
  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
@@ -80,7 +80,7 @@ static FILE *my_file;
 static bool use_reset = FALSE;	/* invoked as reset */
 static bool use_init = FALSE;	/* invoked as init */
 
-static void
+static GCC_NORETURN void
 failed(const char *msg)
 {
     int code = errno;
@@ -102,7 +102,7 @@ cat_file(char *file)
     bool sent = FALSE;
 
     if (file != 0) {
-	if ((fp = fopen(file, "r")) == 0)
+	if ((fp = safe_fopen(file, "r")) == 0)
 	    failed(file);
 
 	while ((nr = fread(buf, sizeof(char), sizeof(buf), fp)) != 0) {
@@ -193,7 +193,7 @@ out_char(int c)
  * a child program dies in raw mode.
  */
 void
-reset_tty_settings(int fd, TTY * tty_settings)
+reset_tty_settings(int fd, TTY * tty_settings, int noset)
 {
     GET_TTY(fd, tty_settings);
 
@@ -329,7 +329,9 @@ reset_tty_settings(int fd, TTY * tty_settings)
 	);
 #endif
 
-    SET_TTY(fd, tty_settings);
+    if (!noset) {
+	SET_TTY(fd, tty_settings);
+    }
 }
 
 /*
@@ -365,6 +367,10 @@ set_control_chars(TTY * tty_settings, int my_erase, int my_intr, int my_kill)
 {
 #if defined(EXP_WIN32_DRIVER)
     /* noop */
+    (void) tty_settings;
+    (void) my_erase;
+    (void) my_intr;
+    (void) my_kill;
 #else
     if (DISABLED(tty_settings->c_cc[VERASE]) || my_erase >= 0) {
 	tty_settings->c_cc[VERASE] = UChar((my_erase >= 0)
@@ -564,6 +570,11 @@ show_tty_change(TTY * old_settings,
 
 #if defined(EXP_WIN32_DRIVER)
     /* noop */
+    (void) old_settings;
+    (void) new_settings;
+    (void) name;
+    (void) which;
+    (void) def;
 #else
     newer = new_settings->c_cc[which];
     older = old_settings->c_cc[which];

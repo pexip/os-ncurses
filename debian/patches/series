@@ -1,9 +1,7 @@
 01-debian-no-ada-doc.diff
 02-debian-backspace.diff
-02-debian-drop-rin-from-screen-256color.diff
 02-debian-xterm.diff
-02-fix-mlterm.diff
 03-debian-ncursesconfig-omit-L.diff
-CVE-2022-29458.diff
 fix_crash_on_very_long_tc-use_clause.diff
+fix-configure-root-args-option.diff
 debian-env-access.diff

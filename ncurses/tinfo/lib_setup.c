@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -49,7 +49,7 @@
 #include <locale.h>
 #endif
 
-MODULE_ID("$Id: lib_setup.c,v 1.212 2020/09/09 19:43:00 juergen Exp $")
+MODULE_ID("$Id: lib_setup.c,v 1.218 2022/08/13 18:12:22 tom Exp $")
 
 /****************************************************************************
  *
@@ -66,7 +66,7 @@ MODULE_ID("$Id: lib_setup.c,v 1.212 2020/09/09 19:43:00 juergen Exp $")
 #endif
 
 #if NEED_PTEM_H
- /* On SCO, they neglected to define struct winsize in termios.h -- it's only
+ /* On SCO, they neglected to define struct winsize in termios.h -- it is only
   * in termio.h and ptem.h (the former conflicts with other definitions).
   */
 # include <sys/stream.h>
@@ -743,6 +743,7 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 		       "Not enough memory to create terminal structure.\n",
 		       myname, free(myname));
 	}
+	++_nc_globals.terminal_count;
 #if HAVE_SYSCONF
 	{
 	    long limit;
@@ -802,6 +803,7 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 		ret_error1(status, "unknown terminal type.\n",
 			   myname, free(myname));
 	    } else {
+		free(myname);
 		ret_error0(status, "unexpected return-code\n");
 	    }
 	}
@@ -829,7 +831,7 @@ TINFO_SETUP_TERM(TERMINAL **tp,
 	if (NC_ISATTY(Filedes)) {
 	    NCURSES_SP_NAME(def_shell_mode) (NCURSES_SP_ARG);
 	    NCURSES_SP_NAME(def_prog_mode) (NCURSES_SP_ARG);
-	    baudrate();
+	    NCURSES_SP_NAME(baudrate) (NCURSES_SP_ARG);
 	}
 	code = OK;
 #endif
@@ -906,6 +908,7 @@ _nc_forget_prescr(void)
 {
     PRESCREEN_LIST *p, *q;
     pthread_t id = GetThreadID();
+    _nc_lock_global(screen);
     for (p = _nc_prescreen.allocated, q = 0; p != 0; q = p, p = p->next) {
 	if (p->id == id) {
 	    if (q) {
@@ -917,6 +920,7 @@ _nc_forget_prescr(void)
 	    break;
 	}
     }
+    _nc_unlock_global(screen);
 }
 #endif /* USE_PTHREADS */
 
@@ -988,6 +992,7 @@ _nc_setupterm(const char *tname,
     int rc = ERR;
     TERMINAL *termp = 0;
 
+    _nc_init_pthreads();
     _nc_lock_global(prescreen);
     START_TRACE();
     if (TINFO_SETUP_TERM(&termp, tname, Filedes, errret, reuse) == OK) {
@@ -997,6 +1002,7 @@ _nc_setupterm(const char *tname,
 	}
     }
     _nc_unlock_global(prescreen);
+
     return rc;
 }
 #endif

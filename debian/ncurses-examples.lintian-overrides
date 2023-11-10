@@ -1,2 +1,2 @@
-# This file describes the sample programs in its directory
-ncurses-examples: package-contains-documentation-outside-usr-share-doc usr/lib/ncurses/examples/README.gz
+# This is embedded awk code, not a shell function
+ncurses-examples: bash-term-in-posix-shell 'function scaled(' [usr/libexec/ncurses-examples/tput-initc:*]

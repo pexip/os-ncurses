@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2021,2022 Thomas E. Dickey                                *
  * Copyright 2017 Free Software Foundation, Inc.                            *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -27,7 +27,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: demo_new_pair.c,v 1.21 2020/02/02 23:34:34 tom Exp $
+ * $Id: demo_new_pair.c,v 1.27 2022/12/04 00:40:11 tom Exp $
  *
  * Demonstrate the alloc_pair() function.
  */
@@ -127,25 +127,27 @@ now(void)
 }
 
 static void
-usage(void)
+usage(int ok)
 {
     static const char *msg[] =
     {
-	"Usage: demo_new_pair [options]",
-	"",
-	"Repeatedly print using all possible color combinations.",
-	"",
-	"Options:",
-	" -i       use init_pair rather than alloc_pair",
-	" -p       start in paged-mode",
-	" -s       start in single-step mode",
-	" -w       print a wide-character cell",
+	"Usage: demo_new_pair [options]"
+	,""
+	,"Repeatedly print using all possible color combinations."
+	,""
+	,USAGE_COMMON
+	,"Options:"
+	," -g       use getcchar to check setcchar"
+	," -i       use init_pair rather than alloc_pair"
+	," -p       start in paged-mode"
+	," -s       start in single-step mode"
+	," -w       print a wide-character cell"
     };
     unsigned n;
     for (n = 0; n < SIZEOF(msg); ++n) {
 	fprintf(stderr, "%s\n", msg[n]);
     }
-    ExitProgram(EXIT_FAILURE);
+    ExitProgram(ok ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 #define use_pages() \
@@ -157,6 +159,9 @@ usage(void)
 #define update_modes() \
 	    scrollok(stdscr, !paged_mode); \
 	    nodelay(stdscr, !single_mode || paged_mode)
+/* *INDENT-OFF* */
+VERSION_COMMON()
+/* *INDENT-ON* */
 
 int
 main(int argc, char *argv[])
@@ -186,6 +191,7 @@ main(int argc, char *argv[])
     };
 
     bool done = FALSE;
+    bool check_set = FALSE;
     bool clobber = FALSE;
     bool hascolor = FALSE;
     bool use_init = FALSE;
@@ -202,8 +208,11 @@ main(int argc, char *argv[])
 
     setlocale(LC_ALL, "");
 
-    while ((ch = getopt(argc, argv, "ipsw")) != -1) {
+    while ((ch = getopt(argc, argv, OPTS_COMMON "gipsw")) != -1) {
 	switch (ch) {
+	case 'g':
+	    check_set = TRUE;
+	    break;
 	case 'i':
 	    use_init = TRUE;
 	    break;
@@ -216,9 +225,12 @@ main(int argc, char *argv[])
 	case 'w':
 	    use_wide = TRUE;
 	    break;
+	case OPTS_VERSION:
+	    show_version(argv);
+	    ExitProgram(EXIT_SUCCESS);
 	default:
-	    usage();
-	    break;
+	    usage(ch == OPTS_USAGE);
+	    /* NOTREACHED */
 	}
     }
 
@@ -327,6 +339,39 @@ main(int argc, char *argv[])
 	setcchar(&temp, wch, my_attrs,
 		 (short) my_pair,
 		 (use_init ? NULL : (void *) &my_pair));
+
+	if (check_set) {
+	    int problem = 0;
+	    wchar_t chk_wch[2];
+	    attr_t chk_attrs = 0;
+	    short chk_pair = 0;
+	    int chk_pair2 = 0;
+
+#define AllButColor(a) ((a) & (A_ATTRIBUTES & ~A_COLOR))
+
+	    if (getcchar(&temp, NULL, &chk_attrs, &chk_pair,
+			 (use_init ? NULL : (void *) &chk_pair2)) != 2) {
+		problem = 1;
+	    } else if (getcchar(&temp, chk_wch, &chk_attrs, &chk_pair,
+				(use_init ? NULL : (void *) &chk_pair2)) != OK) {
+		problem = 2;
+	    } else if (chk_wch[0] != wch[0]) {
+		problem = 3;
+	    } else if (AllButColor(my_attrs) != AllButColor(chk_attrs)) {
+		problem = 4;
+	    } else if (my_pair != chk_pair) {
+		problem = 4;
+	    } else if (!use_init && (my_pair != chk_pair2)) {
+		problem = 5;
+	    }
+	    if (problem) {
+		wch[0] = (wchar_t) (problem + '0');
+		setcchar(&temp, wch, my_attrs,
+			 (short) my_pair,
+			 (use_init ? NULL : (void *) &my_pair));
+	    }
+	}
+
 	/*
 	 * At the end of a page, move the cursor to the home position.
 	 */
