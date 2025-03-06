@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2019-2020,2021 Thomas E. Dickey                                *
+ * Copyright 2019-2023,2024 Thomas E. Dickey                                *
  * Copyright 1998-2011,2012 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -43,9 +43,16 @@
 #endif
 #endif
 
+#if HAVE_GETAUXVAL && HAVE_SYS_AUXV_H && defined(__GLIBC__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
+#include <sys/auxv.h>
+#define USE_GETAUXVAL 1
+#else
+#define USE_GETAUXVAL 0
+#endif
+
 #include <tic.h>
 
-MODULE_ID("$Id: access.c,v 1.31 2021/08/29 10:35:17 tom Exp $")
+MODULE_ID("$Id: access.c,v 1.41 2024/12/07 18:05:04 tom Exp $")
 
 #define LOWERCASE(c) ((isalpha(UChar(c)) && isupper(UChar(c))) ? tolower(UChar(c)) : (c))
 
@@ -63,8 +70,8 @@ _nc_rootname(char *path)
     static char *temp;
     char *s;
 
-    temp = strdup(result);
-    result = temp;
+    if ((temp = strdup(result)) != NULL)
+	result = temp;
 #if !MIXEDCASE_FILENAMES
     for (s = result; *s != '\0'; ++s) {
 	*s = (char) LOWERCASE(*s);
@@ -90,7 +97,7 @@ _nc_is_abs_path(const char *path)
 #define is_pathname(s) ((((s) != 0) && ((s)[0] == '/')) \
 		  || (((s)[0] != 0) && ((s)[1] == ':')))
 #else
-#define is_pathname(s) ((s) != 0 && (s)[0] == '/')
+#define is_pathname(s) ((s) != NULL && (s)[0] == '/')
 #endif
     return is_pathname(path);
 }
@@ -106,7 +113,7 @@ _nc_pathlast(const char *path)
     if (test == 0)
 	test = strrchr(path, '\\');
 #endif
-    if (test == 0)
+    if (test == NULL)
 	test = path;
     else
 	test++;
@@ -124,7 +131,8 @@ _nc_access(const char *path, int mode)
 {
     int result;
 
-    if (path == 0) {
+    if (path == NULL) {
+	errno = ENOENT;
 	result = -1;
     } else if (ACCESS(path, mode) < 0) {
 	if ((mode & W_OK) != 0
@@ -135,7 +143,7 @@ _nc_access(const char *path, int mode)
 
 	    _nc_STRCPY(head, path, sizeof(head));
 	    leaf = _nc_basename(head);
-	    if (leaf == 0)
+	    if (leaf == NULL)
 		leaf = head;
 	    *leaf = '\0';
 	    if (head == leaf)
@@ -143,6 +151,7 @@ _nc_access(const char *path, int mode)
 
 	    result = ACCESS(head, R_OK | W_OK | X_OK);
 	} else {
+	    errno = EPERM;
 	    result = -1;
 	}
     } else {
@@ -177,14 +186,25 @@ _nc_is_file_path(const char *path)
     return result;
 }
 
-#if HAVE_ISSETUGID
-#define is_elevated() issetugid()
-#elif HAVE_GETEUID && HAVE_GETEGID
-#define is_elevated() \
+#if HAVE_GETEUID && HAVE_GETEGID
+#define is_posix_elevated() \
 	(getuid() != geteuid() \
 	 || getgid() != getegid())
 #else
-#define is_elevated() FALSE
+#define is_posix_elevated() FALSE
+#endif
+
+#if HAVE_ISSETUGID
+#define is_elevated() issetugid()
+#elif USE_GETAUXVAL && defined(AT_SECURE)
+#define is_elevated() \
+	(getauxval(AT_SECURE) \
+	 ? TRUE \
+	 : (errno != ENOENT \
+	    ? FALSE \
+	    : is_posix_elevated()))
+#else
+#define is_elevated() is_posix_elevated()
 #endif
 
 #if HAVE_SETFSUID
@@ -203,26 +223,55 @@ _nc_is_file_path(const char *path)
 #define resume_elevation()	/* nothing */
 #endif
 
-#ifndef USE_ROOT_ENVIRON
 /*
- * Returns true if we allow application to use environment variables that are
- * used for searching lists of directories, etc.
+ * Returns true if not running as root or setuid.  We use this check to allow
+ * applications to use environment variables that are used for searching lists
+ * of directories, etc.
  */
 NCURSES_EXPORT(int)
 _nc_env_access(void)
 {
     int result = TRUE;
 
+#if HAVE_GETUID && HAVE_GETEUID
+#if !defined(USE_SETUID_ENVIRON)
     if (is_elevated()) {
 	result = FALSE;
-    } else if ((getuid() == ROOT_UID) || (geteuid() == ROOT_UID)) {
+    }
+#endif
+#if !defined(USE_ROOT_ENVIRON)
+    if ((getuid() == ROOT_UID) || (geteuid() == ROOT_UID)) {
 	result = FALSE;
+    }
+#endif
+#endif /* HAVE_GETUID && HAVE_GETEUID */
+    return result;
+}
+
+#ifndef USE_ROOT_ACCESS
+static int
+is_a_file(int fd)
+{
+    int result = FALSE;
+    if (fd >= 0) {
+	struct stat sb;
+	if (fstat(fd, &sb) == 0) {
+	    switch (sb.st_mode & S_IFMT) {
+	    case S_IFBLK:
+	    case S_IFCHR:
+	    case S_IFDIR:
+		/* disallow devices and directories */
+		break;
+	    default:
+		/* allow regular files, fifos and sockets */
+		result = TRUE;
+		break;
+	    }
+	}
     }
     return result;
 }
-#endif /* USE_ROOT_ENVIRON */
 
-#ifndef USE_ROOT_ACCESS
 /*
  * Limit privileges if possible; otherwise disallow access for updating files.
  */
@@ -239,6 +288,12 @@ _nc_safe_fopen(const char *path, const char *mode)
 	result = fopen(path, mode);
     }
 #endif
+    if (result != NULL) {
+	if (!is_a_file(fileno(result))) {
+	    fclose(result);
+	    result = NULL;
+	}
+    }
     return result;
 }
 
@@ -255,6 +310,12 @@ _nc_safe_open3(const char *path, int flags, mode_t mode)
 	result = open(path, flags, mode);
     }
 #endif
+    if (result >= 0) {
+	if (!is_a_file(result)) {
+	    close(result);
+	    result = -1;
+	}
+    }
     return result;
 }
-#endif /* USE_ROOT_ENVIRON */
+#endif /* USE_ROOT_ACCESS */

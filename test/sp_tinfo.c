@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2019-2020,2022 Thomas E. Dickey                                *
+ * Copyright 2019-2023,2024 Thomas E. Dickey                                *
  * Copyright 2017 Free Software Foundation, Inc.                            *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -28,7 +28,7 @@
  ****************************************************************************/
 
 /*
- * $Id: sp_tinfo.c,v 1.28 2022/12/10 23:23:27 tom Exp $
+ * $Id: sp_tinfo.c,v 1.30 2024/12/07 23:03:07 tom Exp $
  *
  * TOTO: add option for non-sp-funcs interface
  */
@@ -138,7 +138,7 @@ static void
 show_string(MYDATA * data, const char *name, const char *value)
 {
     fprintf(data->fp, " %s = ", name);
-    if (value == 0) {
+    if (value == NULL) {
 	fprintf(data->fp, "(missing)");
     } else if (value == (char *) -1) {
 	fprintf(data->fp, "(canceled)");
@@ -218,7 +218,7 @@ do_stuff(MYDATA * data)
     define_key_sp(sp, my_text, my_code);
     has_key_sp(sp, 0);
     key_defined_sp(sp, my_text);
-    if ((s = keybound_sp(sp, my_code, 0)) != 0)
+    if ((s = keybound_sp(sp, my_code, 0)) != NULL)
 	free(s);
 #endif
     keyname_sp(sp, '?');
@@ -240,7 +240,7 @@ do_stuff(MYDATA * data)
     typeahead_sp(sp, FALSE);	/* waddch */
     use_env_sp(sp, FALSE);	/* newterm */
     use_tioctl_sp(sp, FALSE);	/* newterm */
-    intrflush_sp(sp, 0, 0);	/* wgetch */
+    intrflush_sp(sp, NULL, 0);	/* wgetch */
     flushinp_sp(sp);		/* waddch */
     halfdelay_sp(sp, 5);	/* wgetch */
 
@@ -339,8 +339,12 @@ main(int argc, char *argv[])
     do_stuff(my_out);
     do_stuff(my_err);
 
-    cleanup(my_out);
-    cleanup(my_err);
+    if (my_out != my_err) {
+	cleanup(my_out);
+	cleanup(my_err);
+    } else {
+	cleanup(my_out);
+    }
 
     ExitProgram(EXIT_SUCCESS);
 }

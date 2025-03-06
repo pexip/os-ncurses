@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2021,2022 Thomas E. Dickey                                *
+ * Copyright 2018-2023,2024 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -85,7 +85,7 @@
 
 #include <ctype.h>
 
-MODULE_ID("$Id: tty_update.c,v 1.314 2022/07/23 22:12:59 tom Exp $")
+MODULE_ID("$Id: tty_update.c,v 1.317 2024/12/07 18:00:11 tom Exp $")
 
 /*
  * This define controls the line-breakout optimization.  Every once in a
@@ -256,12 +256,13 @@ PutAttrChar(NCURSES_SP_DCLx CARG_CH_T ch)
 	 *    not checked.
 	 */
 	if (is8bits(CharOf(CHDEREF(ch)))
+	    && (!is7bits(CharOf(CHDEREF(ch))) && _nc_unicode_locale())
 	    && (isprint(CharOf(CHDEREF(ch)))
 		|| (SP_PARM->_legacy_coding > 0 && CharOf(CHDEREF(ch)) >= 160)
 		|| (SP_PARM->_legacy_coding > 1 && CharOf(CHDEREF(ch)) >= 128)
 		|| (AttrOf(attr) & A_ALTCHARSET
 		    && ((CharOfD(ch) < ACS_LEN
-			 && SP_PARM->_acs_map != 0
+			 && SP_PARM->_acs_map != NULL
 			 && SP_PARM->_acs_map[CharOfD(ch)] != 0)
 			|| (CharOfD(ch) >= 128))))) {
 	    ;
@@ -274,7 +275,7 @@ PutAttrChar(NCURSES_SP_DCLx CARG_CH_T ch)
 #endif
 
     if ((AttrOf(attr) & A_ALTCHARSET)
-	&& SP_PARM->_acs_map != 0
+	&& SP_PARM->_acs_map != NULL
 	&& ((CharOfD(ch) < ACS_LEN)
 #if !NCURSES_WCWIDTH_GRAPHICS
 	    || is_wacs_value(CharOfD(ch))
@@ -620,7 +621,7 @@ EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T *ntext, int num)
 		} else {
 		    return 1;	/* cursor stays in the middle */
 		}
-	    } else if (repeat_char != 0 &&
+	    } else if (repeat_char != NULL &&
 #if BSD_TPUTS
 		       !isdigit(UChar(CharOf(ntext0))) &&
 #endif
@@ -642,7 +643,7 @@ EmitRange(NCURSES_SP_DCLx const NCURSES_CH_T *ntext, int num)
 		UpdateAttrs(SP_PARM, ntext0);
 		temp = ntext0;
 		if ((AttrOf(temp) & A_ALTCHARSET) &&
-		    SP_PARM->_acs_map != 0 &&
+		    SP_PARM->_acs_map != NULL &&
 		    (SP_PARM->_acs_map[CharOf(temp)] & A_CHARTEXT) != 0) {
 		    SetChar(temp,
 			    (SP_PARM->_acs_map[CharOf(ntext0)] & A_CHARTEXT),
@@ -744,7 +745,7 @@ TINFO_DOUPDATE(NCURSES_SP_DCL0)
 
     _nc_lock_global(update);
 
-    if (SP_PARM == 0) {
+    if (SP_PARM == NULL) {
 	_nc_unlock_global(update);
 	returnCode(ERR);
     }
@@ -761,7 +762,7 @@ TINFO_DOUPDATE(NCURSES_SP_DCL0)
     if (SP_PARM == CURRENT_SCREEN) {
 #endif
 #define SyncScreens(internal,exported) \
-	if (internal == 0) internal = exported; \
+	if (internal == NULL) internal = exported; \
 	if (internal != exported) exported = internal
 
 	SyncScreens(CurScreen(SP_PARM), curscr);
@@ -772,9 +773,9 @@ TINFO_DOUPDATE(NCURSES_SP_DCL0)
 #endif
 #endif /* !USE_REENTRANT */
 
-    if (CurScreen(SP_PARM) == 0
-	|| NewScreen(SP_PARM) == 0
-	|| StdScreen(SP_PARM) == 0) {
+    if (CurScreen(SP_PARM) == NULL
+	|| NewScreen(SP_PARM) == NULL
+	|| StdScreen(SP_PARM) == NULL) {
 	_nc_unlock_global(update);
 	returnCode(ERR);
     }
@@ -1004,7 +1005,7 @@ TINFO_DOUPDATE(NCURSES_SP_DCL0)
 	if (check_pending(NCURSES_SP_ARG))
 	    goto cleanup;
 
-	nonempty = min(screen_lines(SP_PARM), NewScreen(SP_PARM)->_maxy + 1);
+	nonempty = Min(screen_lines(SP_PARM), NewScreen(SP_PARM)->_maxy + 1);
 
 	if (SP_PARM->_scrolling) {
 	    NCURSES_SP_NAME(_nc_scroll_optimize) (NCURSES_SP_ARG);
@@ -1131,10 +1132,10 @@ static void
 ClrUpdate(NCURSES_SP_DCL0)
 {
     TR(TRACE_UPDATE, (T_CALLED("ClrUpdate")));
-    if (0 != SP_PARM) {
+    if (NULL != SP_PARM) {
 	int i;
 	NCURSES_CH_T blank = ClrBlank(NCURSES_SP_ARGx StdScreen(SP_PARM));
-	int nonempty = min(screen_lines(SP_PARM),
+	int nonempty = Min(screen_lines(SP_PARM),
 			   NewScreen(SP_PARM)->_maxy + 1);
 
 	ClearScreen(NCURSES_SP_ARGx blank);
@@ -1158,7 +1159,7 @@ ClrUpdate(NCURSES_SP_DCL0)
 static void
 ClrToEOL(NCURSES_SP_DCLx NCURSES_CH_T blank, int needclear)
 {
-    if (CurScreen(SP_PARM) != 0
+    if (CurScreen(SP_PARM) != NULL
 	&& SP_PARM->_cursrow >= 0) {
 	int j;
 
@@ -1233,7 +1234,7 @@ static int
 ClrBottom(NCURSES_SP_DCLx int total)
 {
     int top = total;
-    int last = min(screen_columns(SP_PARM), NewScreen(SP_PARM)->_maxx + 1);
+    int last = Min(screen_columns(SP_PARM), NewScreen(SP_PARM)->_maxx + 1);
     NCURSES_CH_T blank = NewScreen(SP_PARM)->_line[total - 1].text[last - 1];
 
     if (clr_eos && can_clear_with(NCURSES_SP_ARGx CHREF(blank))) {
@@ -1293,7 +1294,7 @@ ClrBottom(NCURSES_SP_DCLx int total)
 **		nLastChar = position of last different character in new line
 **
 **		move to firstChar
-**		overwrite chars up to min(oLastChar, nLastChar)
+**		overwrite chars up to Min(oLastChar, nLastChar)
 **		if oLastChar < nLastChar
 **			insert newLine[oLastChar+1..nLastChar]
 **		else
@@ -1531,7 +1532,7 @@ TransformLine(NCURSES_SP_DCLx int const lineno)
 		}
 		ClrToEOL(NCURSES_SP_ARGx blank, FALSE);
 	    } else {
-		n = max(nLastChar, oLastChar);
+		n = Max(nLastChar, oLastChar);
 		PutRange(NCURSES_SP_ARGx
 			 oldLine,
 			 newLine,
@@ -1556,7 +1557,7 @@ TransformLine(NCURSES_SP_DCLx int const lineno)
 		    break;
 	    }
 
-	    n = min(oLastChar, nLastChar);
+	    n = Min(oLastChar, nLastChar);
 	    if (n >= firstChar) {
 		GoTo(NCURSES_SP_ARGx lineno, firstChar);
 		PutRange(NCURSES_SP_ARGx
@@ -1568,7 +1569,7 @@ TransformLine(NCURSES_SP_DCLx int const lineno)
 	    }
 
 	    if (oLastChar < nLastChar) {
-		int m = max(nLastNonblank, oLastNonblank);
+		int m = Max(nLastNonblank, oLastNonblank);
 #if USE_WIDEC_SUPPORT
 		if (n) {
 		    while (isWidecExt(newLine[n + 1]) && n) {
@@ -2222,7 +2223,7 @@ _nc_screen_init(void)
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(_nc_screen_wrap) (NCURSES_SP_DCL0)
 {
-    if (SP_PARM != 0) {
+    if (SP_PARM != NULL) {
 
 	UpdateAttrs(SP_PARM, normal);
 #if NCURSES_EXT_FUNCS
@@ -2264,7 +2265,7 @@ _nc_screen_wrap(void)
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(_nc_do_xmc_glitch) (NCURSES_SP_DCLx attr_t previous)
 {
-    if (SP_PARM != 0) {
+    if (SP_PARM != NULL) {
 	attr_t chg = XMC_CHANGES(previous ^ AttrOf(SCREEN_ATTRS(SP_PARM)));
 
 	while (chg != 0) {

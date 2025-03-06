@@ -1,5 +1,5 @@
-usr/lib64/libncurses.so
-usr/lib64/libncursesw.so
+debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/libncurses.so usr/lib64
+debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/libncursesw.so usr/lib64
 obj-64/lib/libtic.so usr/lib64
 obj-64/lib/libform.so usr/lib64
 obj-64/lib/libmenu.so usr/lib64
@@ -20,4 +20,3 @@ obj-wide-64/lib/libncurses++w.a usr/lib64
 obj-wide-64/lib/libformw.a usr/lib64
 obj-wide-64/lib/libmenuw.a usr/lib64
 obj-wide-64/lib/libpanelw.a usr/lib64
-debian/libtermcap.so  usr/lib64

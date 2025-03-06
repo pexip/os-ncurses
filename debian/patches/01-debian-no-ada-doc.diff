@@ -5,7 +5,7 @@ Description: link to Ada binding doc in separate package
 Author: Nicolas Boulenguez <nicolas@debian.org>
 Bug-Debian: https://bugs.debian.org/757991
 Forwarded: not-needed
-Last-Update: 2017-07-02
+Last-Update: 2024-05-05
 
 ---
  doc/html/index.html |    5 +++--
@@ -19,9 +19,9 @@ Last-Update: 2017-07-02
  
 -    <li>A description of the <a href="Ada95.html">Ada95
 -    binding</a>, by J&uuml;rgen Pfeifer.</li>
-+    <li>A description of the <a href="../../libncursesada-doc/Ada95.html">Ada95
++    <li>A description of the <a href="../../libncursesada-dev/Ada95.html">Ada95
 +    binding</a>, by J&uuml;rgen Pfeifer (only available if you have installed
-+    the libncursesada-doc Debian package).</li>
++    the libncursesada-dev Debian package).</li>
  
      <li>A <a href="NCURSES-Programming-HOWTO.html">A short
      tutorial</a>, by Pradeep Padala.</li>

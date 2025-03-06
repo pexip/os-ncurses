@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2021,2022 Thomas E. Dickey                                *
+ * Copyright 2018-2024,2025 Thomas E. Dickey                                *
  * Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -160,7 +160,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_mvcur.c,v 1.157 2022/08/20 18:28:58 tom Exp $")
+MODULE_ID("$Id: lib_mvcur.c,v 1.165 2025/02/01 21:53:19 tom Exp $")
 
 #define WANT_CHAR(sp, y, x) NewScreen(sp)->_line[y].text[x]	/* desired state */
 
@@ -222,7 +222,7 @@ NCURSES_EXPORT(int)
 NCURSES_SP_NAME(_nc_msec_cost) (NCURSES_SP_DCLx const char *const cap, int affcnt)
 /* compute the cost of a given operation */
 {
-    if (cap == 0)
+    if (cap == NULL)
 	return (INFINITY);
     else {
 	const char *cp;
@@ -232,14 +232,33 @@ NCURSES_SP_NAME(_nc_msec_cost) (NCURSES_SP_DCLx const char *const cap, int affcn
 	    /* extract padding, either mandatory or required */
 	    if (cp[0] == '$' && cp[1] == '<' && strchr(cp, '>')) {
 		float number = 0.0;
+		int state = 0;
 
 		for (cp += 2; *cp != '>'; cp++) {
-		    if (isdigit(UChar(*cp)))
-			number = number * 10 + (float) (*cp - '0');
-		    else if (*cp == '*')
-			number *= (float) affcnt;
-		    else if (*cp == '.' && (*++cp != '>') && isdigit(UChar(*cp)))
-			number += (float) ((*cp - '0') / 10.0);
+		    if (isdigit(UChar(*cp))) {
+			switch (state) {
+			case 0:
+			    number = number * 10 + (float) (*cp - '0');
+			    break;
+			case 2:
+			    number += (float) ((*cp - '0') / 10.0);
+			    ++state;
+			    break;
+			}
+		    } else if (*cp == '*') {
+			/* padding is always a suffix */
+			if (state < 4) {
+			    number *= (float) affcnt;
+			    state = 4;
+			}
+		    } else if (*cp == '.') {
+			/* a single decimal point is allowed */
+			state = (state == 0) ? 2 : 3;
+		    }
+		    if (number > MAX_DELAY_MSECS) {
+			number = MAX_DELAY_MSECS;
+			break;
+		    }
 		}
 
 #if NCURSES_NO_PADDING
@@ -345,7 +364,7 @@ NCURSES_SP_NAME(_nc_mvcur_init) (NCURSES_SP_DCL0)
     SP_PARM->_home_cost = CostOf(cursor_home, 0);
     SP_PARM->_ll_cost = CostOf(cursor_to_ll, 0);
 #if USE_HARD_TABS
-    if (getenv("NCURSES_NO_HARD_TABS") == 0
+    if (getenv("NCURSES_NO_HARD_TABS") == NULL
 	&& dest_tabs_magic_smso == 0
 	&& HasHardTabs()) {
 	SP_PARM->_ht_cost = CostOf(tab, 0);
@@ -432,8 +451,8 @@ NCURSES_SP_NAME(_nc_mvcur_init) (NCURSES_SP_DCL0)
 					   1);
     SP_PARM->_hpa_ch_cost = NormalizedCost(TIPARM_1(column_address, 23), 1);
     SP_PARM->_cuf_ch_cost = NormalizedCost(TIPARM_1(parm_right_cursor, 23), 1);
-    SP_PARM->_inline_cost = min(SP_PARM->_cup_ch_cost,
-				min(SP_PARM->_hpa_ch_cost,
+    SP_PARM->_inline_cost = Min(SP_PARM->_cup_ch_cost,
+				Min(SP_PARM->_hpa_ch_cost,
 				    SP_PARM->_cuf_ch_cost));
 
     /*
@@ -442,12 +461,12 @@ NCURSES_SP_NAME(_nc_mvcur_init) (NCURSES_SP_DCL0)
      * nested on the various terminals (vt100, xterm, etc.) which use this
      * feature.
      */
-    if (save_cursor != 0
-	&& enter_ca_mode != 0
-	&& strstr(enter_ca_mode, save_cursor) != 0) {
+    if (save_cursor != NULL
+	&& enter_ca_mode != NULL
+	&& strstr(enter_ca_mode, save_cursor) != NULL) {
 	T(("...suppressed sc/rc capability due to conflict with smcup/rmcup"));
-	save_cursor = 0;
-	restore_cursor = 0;
+	save_cursor = NULL;
+	restore_cursor = NULL;
     }
 
     /*
@@ -561,7 +580,7 @@ relative_move(NCURSES_SP_DCLx
     if (to_y != from_y) {
 	vcost = INFINITY;
 
-	if (row_address != 0
+	if (row_address != NULL
 	    && _nc_safe_strcat(target, TIPARM_1(row_address, to_y))) {
 	    vcost = SP_PARM->_vpa_cost;
 	}
@@ -675,7 +694,7 @@ relative_move(NCURSES_SP_DCLx
 		 * and the time the structure WANT_CHAR would access has been
 		 * updated.
 		 */
-		if (ovw) {
+		if (ovw && to_y >= 0) {
 		    int i;
 
 		    for (i = 0; i < n; i++) {
@@ -690,7 +709,7 @@ relative_move(NCURSES_SP_DCLx
 			}
 		    }
 		}
-		if (ovw) {
+		if (ovw && to_y >= 0) {
 		    int i;
 
 		    for (i = 0; i < n; i++)
@@ -929,8 +948,8 @@ onscreen_mvcur(NCURSES_SP_DCLx
   nonlocal:
 #if defined(MAIN) || defined(NCURSES_TEST)
     gettimeofday(&after, NULL);
-    diff = after.tv_usec - before.tv_usec
-	+ (after.tv_sec - before.tv_sec) * 1000000;
+    diff = (float) (after.tv_usec - before.tv_usec
+		    + (after.tv_sec - before.tv_sec) * 1000000);
     if (!profiling)
 	(void) fprintf(stderr,
 		       "onscreen: %d microsec, %f 28.8Kbps char-equivalents\n",
@@ -965,7 +984,7 @@ _nc_real_mvcur(NCURSES_SP_DCLx
     TR(TRACE_CALLS | TRACE_MOVE, (T_CALLED("_nc_real_mvcur(%p,%d,%d,%d,%d)"),
 				  (void *) SP_PARM, yold, xold, ynew, xnew));
 
-    if (SP_PARM == 0) {
+    if (SP_PARM == NULL) {
 	code = ERR;
     } else if (yold == ynew && xold == xnew) {
 	code = OK;
@@ -1060,7 +1079,7 @@ NCURSES_SP_NAME(_nc_mvcur) (NCURSES_SP_DCLx
      * external calls.  Flush the output if the screen has not been
      * initialized, e.g., when used from low-level terminfo programs.
      */
-    if ((SP_PARM != 0) && (SP_PARM->_endwin == ewInitial))
+    if ((SP_PARM != NULL) && (SP_PARM->_endwin == ewInitial))
 	NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
     return rc;
 }
@@ -1087,7 +1106,7 @@ TINFO_MVCUR(NCURSES_SP_DCLx int yold, int xold, int ynew, int xnew)
 			ynew, xnew,
 			NCURSES_SP_NAME(_nc_outch),
 			TRUE);
-    if ((SP_PARM != 0) && (SP_PARM->_endwin == ewInitial))
+    if ((SP_PARM != NULL) && (SP_PARM->_endwin == ewInitial))
 	NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
     NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
     return rc;
@@ -1208,7 +1227,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 
 	if (fputs("> ", stdout) == EOF)
 	    break;
-	if (fgets(buf, sizeof(buf), stdin) == 0)
+	if (fgets(buf, sizeof(buf), stdin) == NULL)
 	    break;
 
 #define PUTS(s)   (void) puts(s)
@@ -1288,7 +1307,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	} else if (buf[0] == 'i') {
 	    dump_init(NULL, F_TERMINFO, S_TERMINFO,
 		      FALSE, 70, 0, 0, FALSE, FALSE, 0);
-	    dump_entry(&TerminalType(cur_term), FALSE, TRUE, 0, 0);
+	    dump_entry(&TerminalType(cur_term), FALSE, TRUE, 0, NULL);
 	    putchar('\n');
 	} else if (buf[0] == 'o') {
 	    if (_nc_optimize_enable & OPTIMIZE_MVCUR) {
@@ -1319,7 +1338,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	 * is winning.
 	 */
 	else if (sscanf(buf, "t %d", &n) == 1) {
-	    float cumtime = 0.0, perchar;
+	    double cumtime = 0.0, perchar;
 	    int speeds[] =
 	    {2400, 9600, 14400, 19200, 28800, 38400, 0};
 
@@ -1365,14 +1384,14 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 		 * transmission both. Transmission time is an estimate
 		 * assuming 9 bits/char, 8 bits + 1 stop bit.
 		 */
-		float totalest = cumtime + xmits * 9 * 1e6 / speeds[i];
+		double totalest = cumtime + (double) xmits * 9 * 1e6 / speeds[i];
 
 		/*
 		 * Per-character optimization overhead in character transmits
 		 * at the current speed.  Round this to the nearest integer
 		 * to figure COMPUTE_OVERHEAD for the speed.
 		 */
-		float overhead = speeds[i] * perchar / 1e6;
+		double overhead = speeds[i] * perchar / 1e6;
 
 		(void)
 		    printf("%6d bps: %3.2f char-xmits overhead; total estimated time %15.2f\n",
