@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2021,2022 Thomas E. Dickey                                *
+ * Copyright 2018-2023,2024 Thomas E. Dickey                                *
  * Copyright 2016,2017 Free Software Foundation, Inc.                       *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -27,7 +27,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: list_keys.c,v 1.31 2022/12/10 23:23:27 tom Exp $
+ * $Id: list_keys.c,v 1.37 2024/12/07 22:33:32 tom Exp $
  *
  * Author: Thomas E Dickey
  *
@@ -52,7 +52,10 @@
 static bool f_opt = FALSE;
 static bool m_opt = FALSE;
 static bool t_opt = FALSE;
+
+#if NCURSES_XNAMES || HAVE_USE_EXTENDED_NAMES
 static bool x_opt = FALSE;
+#endif
 
 typedef enum {
     ktCursor
@@ -71,12 +74,19 @@ typedef struct {
 #define Type(n) list[n].type
 #define Name(n) list[n].name
 
+static void
+failed(const char *msg)
+{
+    perror(msg);
+    ExitProgram(EXIT_FAILURE);
+}
+
 static const char *
 full_name(const char *name)
 {
     const char *result = name;
     int n;
-    for (n = 0; strnames[n] != 0; ++n) {
+    for (n = 0; strnames[n] != NULL; ++n) {
 	if (!strcmp(name, strnames[n])) {
 	    result = strfnames[n];
 	    break;
@@ -94,7 +104,7 @@ show_key(const char *name, bool show)
     if (show && t_opt)
 	fputc('"', stdout);
 
-    if (value != 0 && value != (char *) -1) {
+    if (value != NULL && value != (char *) -1) {
 	while (*value != 0) {
 	    char buffer[10];
 	    int ch = UChar(*value++);
@@ -287,7 +297,7 @@ list_keys(TERMINAL **terms, int count)
 #if NCURSES_XNAMES
     if (x_opt) {
 	for (k = 0; k < count; ++k) {
-	    TERMTYPE *term;
+	    const TERMTYPE *term;
 	    set_curterm(terms[k]);
 	    term = (TERMTYPE *) cur_term;
 	    total += (size_t) (NUM_STRINGS(term) - STRCOUNT);
@@ -338,12 +348,15 @@ list_keys(TERMINAL **terms, int count)
 	widths1 = (int) strlen(modifier);
 
     for (k = 0; k < count; ++k) {
+	const char *value;
 	set_curterm(terms[k]);
-	check = (int) strlen(termname());
+	if ((value = termname()) == NULL)
+	    failed("termname");
+	check = (int) strlen(value);
 	if (widths2 < check)
 	    widths2 = check;
     }
-    for (j = 0; Name(j) != 0; ++j) {
+    for (j = 0; Name(j) != NULL; ++j) {
 	if (valid_key(Name(j), terms, count)) {
 	    const char *label = f_opt ? full_name(Name(j)) : Name(j);
 	    check = (int) strlen(label);
@@ -386,7 +399,7 @@ list_keys(TERMINAL **terms, int count)
 
     widthsx = widths0 + ((count + 1) * widths2);
 
-    for (j = 0; Name(j) != 0; ++j) {
+    for (j = 0; Name(j) != NULL; ++j) {
 	if (j == 0 || (Type(j) != Type(j - 1)))
 	    draw_line(widthsx);
 	if (valid_key(Name(j), terms, count)) {
@@ -427,9 +440,9 @@ usage(int ok)
 	,""
 	,USAGE_COMMON
 	,"Options:"
-	," -f       print full names"
+	," -f       print full terminfo names"
 	," -m       print modifier-column for shift/control keys"
-	," -t       print result as CSV table"
+	," -t       print the result as CSV table"
 #ifdef NCURSES_VERSION
 	," -x       print extended capabilities"
 #endif
@@ -461,7 +474,7 @@ main(int argc, char *argv[])
 	case 't':
 	    t_opt = TRUE;
 	    break;
-#ifdef NCURSES_VERSION
+#if NCURSES_XNAMES || HAVE_USE_EXTENDED_NAMES
 	case 'x':
 	    x_opt = TRUE;
 	    break;
@@ -485,7 +498,7 @@ main(int argc, char *argv[])
 	int n;
 	for (n = optind; n < argc; ++n) {
 	    setupterm((NCURSES_CONST char *) argv[n], 1, &status);
-	    if (status > 0 && cur_term != 0) {
+	    if (status > 0 && cur_term != NULL) {
 		terms[found++] = cur_term;
 	    }
 	}

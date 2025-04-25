@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2019,2020 Thomas E. Dickey                                *
+ * Copyright 2018-2023,2024 Thomas E. Dickey                                *
  * Copyright 2008-2010,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -31,12 +31,14 @@
  * Author: Thomas Dickey, 2008-on                                           *
  ****************************************************************************/
 
-/* $Id: nc_mingw.h,v 1.9 2020/07/11 22:13:19 tom Exp $ */
+/* $Id: nc_mingw.h,v 1.13 2024/08/31 15:50:24 tom Exp $ */
 
 #ifndef NC_MINGW_H
 #define NC_MINGW_H 1
 
-#ifdef _WIN32
+#include <ncurses_cfg.h>
+
+#if defined(_WIN32) || defined(__MSYS__) || defined(__CYGWIN__)
 
 #ifdef WINVER
 #  if WINVER < 0x0501
@@ -50,9 +52,6 @@
 #undef sleep
 #define sleep(n) Sleep((n) * 1000)
 
-#undef gettimeofday
-#define gettimeofday(tv,tz) _nc_gettimeofday(tv,tz)
-
 #if HAVE_SYS_TIME_H
 #include <sys/time.h>		/* for struct timeval */
 #endif
@@ -61,16 +60,20 @@
 #include <winsock2.h>		/* for struct timeval */
 #endif
 
+#include <stdint.h>		/* for uint32_t */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <ncurses_dll.h>
 
+#if !HAVE_CLOCK_GETTIME && !HAVE_GETTIMEOFDAY
 NCURSES_EXPORT(int) _nc_gettimeofday(struct timeval *, void *);
-
 #undef HAVE_GETTIMEOFDAY
-#define HAVE_GETTIMEOFDAY 1
+#define HAVE_GETTIMEOFDAY 2
+#define gettimeofday(tv,tz) _nc_gettimeofday(tv,tz)
+#endif
 
 #define SIGHUP  1
 #define SIGKILL 9
@@ -78,12 +81,12 @@ NCURSES_EXPORT(int) _nc_gettimeofday(struct timeval *, void *);
 
 #undef wcwidth
 #define wcwidth(ucs) _nc_wcwidth((wchar_t)(ucs))
-NCURSES_EXPORT(int) _nc_wcwidth(wchar_t);
+NCURSES_EXPORT(int) _nc_wcwidth(uint32_t);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _WIN32 */
+#endif /* _WIN32|__MSYS__|__CYGWIN__ */
 
 #endif /* NC_MINGW_H */

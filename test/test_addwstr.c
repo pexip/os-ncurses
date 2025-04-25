@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2020,2022 Thomas E. Dickey                                     *
+ * Copyright 2020-2023,2024 Thomas E. Dickey                                *
  * Copyright 2009-2016,2017 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -27,7 +27,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: test_addwstr.c,v 1.21 2022/12/10 22:28:50 tom Exp $
+ * $Id: test_addwstr.c,v 1.24 2024/12/07 22:41:11 tom Exp $
  *
  * Demonstrate the waddwstr() and wadd_wch functions.
  * Thomas Dickey - 2009/9/12
@@ -82,7 +82,7 @@ static bool w_opt = FALSE;
 static int n_opt = -1;
 
 static void
-legend(WINDOW *win, int level, Options state, wchar_t *buffer, int length)
+legend(WINDOW *win, int level, Options state, const wchar_t *buffer, int length)
 {
     const char *showstate;
 
@@ -114,7 +114,7 @@ legend(WINDOW *win, int level, Options state, wchar_t *buffer, int length)
 }
 
 static int
-ColOf(wchar_t *buffer, int length, int margin)
+ColOf(const wchar_t *const buffer, int length, int margin)
 {
     int n;
     int result;
@@ -233,9 +233,9 @@ recursive_test(int level)
     int row2, col2;
     int length;
     wchar_t buffer[BUFSIZ];
-    WINDOW *look = 0;
-    WINDOW *work = 0;
-    WINDOW *show = 0;
+    WINDOW *look = NULL;
+    WINDOW *work = NULL;
+    WINDOW *show = NULL;
     int margin = (2 * MY_TABSIZE) - 1;
     Options option = (Options) ((unsigned) (m_opt
 					    ? oMove

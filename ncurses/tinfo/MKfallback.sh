@@ -1,6 +1,6 @@
 #!/bin/sh
 ##############################################################################
-# Copyright 2020 Thomas E. Dickey                                            #
+# Copyright 2020,2023 Thomas E. Dickey                                       #
 # Copyright 1998-2019,2020 Free Software Foundation, Inc.                    #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
@@ -27,7 +27,7 @@
 # use or other dealings in this Software without prior written               #
 # authorization.                                                             #
 ##############################################################################
-# $Id: MKfallback.sh,v 1.25 2020/08/16 15:58:44 tom Exp $
+# $Id: MKfallback.sh,v 1.28 2024/12/21 18:45:15 tom Exp $
 #
 # MKfallback.sh -- create fallback table for entry reads
 #
@@ -95,7 +95,7 @@ EOF
 	for x in "$@"
 	do
 		echo "/* $x */"
-		"$infocmp_path" -E "$x" | sed -e 's/\<short\>/NCURSES_INT2/g'
+		"$infocmp_path" -E "$x" | sed -e 's/[ 	]short[ 	]/ NCURSES_INT2 /g'
 	done
 
 	cat <<EOF
@@ -146,15 +146,12 @@ cat <<EOF
 #if NCURSES_EXT_NUMBERS
 #undef _nc_fallback
 
-/*
- * This entrypoint is used by tack 1.07
- */
 NCURSES_EXPORT(const TERMTYPE *)
 _nc_fallback (const char *name)
 {
     const TERMTYPE2 *tp = _nc_fallback2(name);
-    const TERMTYPE *result = 0;
-    if (tp != 0) {
+    const TERMTYPE *result = NULL;
+    if (tp != NULL) {
 	static TERMTYPE temp;
 	_nc_export_termtype2(&temp, tp);
 	result = &temp;

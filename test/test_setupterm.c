@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2020,2022 Thomas E. Dickey                                     *
+ * Copyright 2020-2023,2024 Thomas E. Dickey                                *
  * Copyright 2015,2016 Free Software Foundation, Inc.                       *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -30,7 +30,7 @@
 /*
  * Author: Thomas E. Dickey
  *
- * $Id: test_setupterm.c,v 1.16 2022/12/10 23:23:27 tom Exp $
+ * $Id: test_setupterm.c,v 1.18 2024/12/07 23:03:07 tom Exp $
  *
  * A simple demo of setupterm/restartterm.
  */
@@ -47,6 +47,13 @@ static bool r_opt = FALSE;
 static TERMINAL **saved_terminals;
 static size_t num_saved;
 static size_t max_saved;
+
+static void
+failed(const char *msg)
+{
+    perror(msg);
+    ExitProgram(EXIT_FAILURE);
+}
 
 static void
 finish(int code)
@@ -73,6 +80,8 @@ save_curterm(void)
 	if (num_saved + 1 >= max_saved) {
 	    max_saved += 100;
 	    saved_terminals = typeRealloc(TERMINAL *, max_saved, saved_terminals);
+	    if (saved_terminals == NULL)
+		failed("realloc");
 	}
 	saved_terminals[num_saved++] = cur_term;
     }
@@ -89,9 +98,9 @@ test_rc(NCURSES_CONST char *name, int actual_rc, int actual_err)
     int expect_rc = -1;
     int expect_err = -1;
 
-    if (name == 0)
+    if (name == NULL)
 	name = getenv("TERM");
-    if (name == 0)
+    if (name == NULL)
 	name = "?";
 
     switch (*name) {
@@ -235,7 +244,7 @@ main(int argc, char *argv[])
     }
 
     if (a_opt) {
-	static char predef[][9] =
+	static char predef[][12] =
 	{"vt100", "dumb", "lpr", "unknown", "none-such"};
 	if (optind < argc) {
 	    usage(FALSE);
