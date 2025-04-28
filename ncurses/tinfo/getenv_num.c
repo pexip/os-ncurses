@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018,2020 Thomas E. Dickey                                     *
+ * Copyright 2018-2020,2024 Thomas E. Dickey                                *
  * Copyright 1998-2012,2013 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -37,16 +37,16 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: getenv_num.c,v 1.8 2020/02/02 23:34:34 tom Exp $")
+MODULE_ID("$Id: getenv_num.c,v 1.10 2024/12/07 18:14:49 tom Exp $")
 
 NCURSES_EXPORT(int)
 _nc_getenv_num(const char *name)
 {
-    char *dst = 0;
-    char *src = getenv(name);
+    char *dst = NULL;
+    const char *src = getenv(name);
     long value;
 
-    if ((src == 0)
+    if ((src == NULL)
 	|| (value = strtol(src, &dst, 0)) < 0
 	|| (dst == src)
 	|| (*dst != '\0')
@@ -59,7 +59,7 @@ _nc_getenv_num(const char *name)
 NCURSES_EXPORT(void)
 _nc_setenv_num(const char *name, int value)
 {
-    if (name != 0 && value >= 0) {
+    if (name != NULL && value >= 0) {
 	char buffer[128];
 #if HAVE_SETENV
 	_nc_SPRINTF(buffer, _nc_SLIMIT(sizeof(buffer)) "%d", value);

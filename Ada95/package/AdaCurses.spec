@@ -2,13 +2,13 @@ Summary: Ada95 binding for ncurses
 %define AppProgram AdaCurses
 %define AppVersion MAJOR.MINOR
 %define AppRelease YYYYMMDD
-# $Id: AdaCurses.spec,v 1.31 2022/12/18 00:08:17 tom Exp $
+# $Id: AdaCurses.spec,v 1.34 2024/06/08 13:53:14 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: %{AppRelease}
 License: MIT
 Group: Applications/Development
-URL: ftp://ftp.invisible-island.net/%{AppProgram}
+URL: https://invisible-island.net/%{AppProgram}
 Source0: %{AppProgram}-%{AppRelease}.tgz
 Packager: Thomas Dickey <dickey@invisible-island.net>
 
@@ -69,6 +69,7 @@ INSTALL_PROGRAM='${INSTALL}' \
 		--disable-rpath-link \
 		--disable-echo \
 		--verbose \
+		--with-screen=ncursesw6dev \
 		--enable-warnings
 
 make

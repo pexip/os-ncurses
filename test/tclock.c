@@ -1,4 +1,4 @@
-/* $Id: tclock.c,v 1.47 2022/12/10 23:23:27 tom Exp $ */
+/* $Id: tclock.c,v 1.51 2025/02/15 15:15:36 tom Exp $ */
 
 #define NEED_TIME_H
 #include <test.priv.h>
@@ -133,6 +133,8 @@ VERSION_COMMON()
 int
 main(int argc, char *argv[])
 {
+    static TimeType initial;
+
     int i, cx, cy;
     double cr, mradius, hradius, mangle, hangle;
     double sangle, sradius, hours;
@@ -143,14 +145,11 @@ main(int argc, char *argv[])
     int lastbeep = -1;
     bool odd = FALSE;
     time_t tim;
-    struct tm *t;
+    const struct tm *t;
     char szChar[20];
     char *text;
     short my_bg = COLOR_BLACK;
-#if HAVE_GETTIMEOFDAY
-    struct timeval current;
-#endif
-    double fraction = 0.0;
+    TimeType current;
 #if HAVE_USE_DEFAULT_COLORS
     bool d_option = FALSE;
 #endif
@@ -221,7 +220,7 @@ main(int argc, char *argv[])
     for (;;) {
 	napms(100);
 
-	tim = time(0);
+	tim = time(NULL);
 	t = localtime(&tim);
 
 	hours = (t->tm_hour + (t->tm_min / 60.0));
@@ -236,11 +235,9 @@ main(int argc, char *argv[])
 	hdx = A2X(hangle, hradius);
 	hdy = A2Y(hangle, hradius);
 
-#if HAVE_GETTIMEOFDAY
-	gettimeofday(&current, 0);
-	fraction = ((double) current.tv_usec / 1.0e6);
-#endif
-	sangle = ((t->tm_sec + fraction) * (2.0 * PI) / 60.0);
+	GetClockTime(&current);
+
+	sangle = (ElapsedSeconds(&initial, &current) * (2.0 * PI) / 60.0);
 	sdx = A2X(sangle, sradius);
 	sdy = A2Y(sangle, sradius);
 
@@ -296,7 +293,7 @@ main(int argc, char *argv[])
 int
 main(void)
 {
-    printf("This program requires the header math.h and trignometric functions\n");
+    printf("This program requires the header math.h and trigonometric functions\n");
     ExitProgram(EXIT_FAILURE);
 }
 #endif

@@ -1,3 +1,217 @@
+ncurses (6.5+20250216-2) unstable; urgency=medium
+
+  * Update upstream signing key.
+  * Upgrade Standards-Version to 4.7.2, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 06 Mar 2025 17:01:55 +0100
+
+ncurses (6.5+20250216-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 18 Feb 2025 17:01:53 +0100
+
+ncurses (6.5+20250125-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Fri, 31 Jan 2025 16:55:43 +0100
+
+ncurses (6.5+20250125-1) experimental; urgency=low
+
+  * New upstream patchlevel.
+  * Refresh Debian patches.
+  * Update years in debian/copyright.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 29 Jan 2025 17:00:06 +0100
+
+ncurses (6.5-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 09 May 2024 10:58:21 +0200
+
+ncurses (6.5-1) experimental; urgency=medium
+
+  * New upstream release.
+  * Update symbols files and bump shlibs.
+    - Update the minimal version for symbols added after the 6.4 release
+      to 6.5.
+  * Update patch 01-debian-no-ada-doc.diff for the changed location of the
+    Ada documentaton.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 05 May 2024 18:31:39 +0200
+
+ncurses (6.4+20240414-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Fix inconsistent description of wmouse_trafo() (Closes: #1059778).
+    - Modify wenclose() to handle pads (Closes: #1059783).
+    - Improve manpage discussion of mouseinterval() (Closes: #1058560).
+  * Add a new "terminfocheck" target to debian/rules to compare the built
+    terminfo files against the system database, and use it in binary-indep
+    builds in a new pkg.ncurses.terminfocheck build profile.
+  * Add a smoke autopkgtest for infocmp, testing that its output for the
+    'dumb' terminfo entry matches expectations (see #868266).
+  * Add another smoke autopkgtest to ensure that the backspace/delete key
+    definitions match expectations (see Policy §9.8).
+  * If DEB_BUILD_OPTIONS matches "terse", configure with --disable-echo.
+  * Stop patching terminfo.src for the Debian-specific terminfo aliases
+    xterm-debian and rxvt-m, create symlinks for them instead.
+    - Drop patch 02-debian-xterm.diff.
+    - Merge patch 02-debian-rxvt.diff into 02-debian-backspace.diff.
+  * Refresh patch 02-debian-backspace.diff.
+  * Upgrade Standards-Version to 4.7.0, no changes needed.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 16 Apr 2024 21:28:36 +0200
+
+ncurses (6.4+20240113-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+  * Refresh Debian patches.
+  * Update years in debian/copyright.
+  * Install ncurses6-config.1 via "make install" to ensure it contains
+    correct cross-references (Closes: #1060211).
+  * Add a regression autopkgtest to ensure that there are no '3X'
+    references in manpages (see #618429, #1004901, #1057651, #1060211).
+  * Build-Depend on pkgconf rather than on pkg-config.
+  * Drop kfreebsd-specific code from debian/rules.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 15 Jan 2024 20:34:12 +0100
+
+ncurses (6.4+20231209-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Remove xterm+sm+1006 from tmux (Closes: #1057688).
+    - Update man/edit_man.sh to allow for "\%" markers embedded after
+      bold font escapes in manpage cross-references (Closes: #1057651).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 11 Dec 2023 17:03:08 +0100
+
+ncurses (6.4+20231121-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Amend fix for #1055882, correcting nul terminator check in
+      waddnstr (Closes: #1056340).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Wed, 22 Nov 2023 17:10:27 +0100
+
+ncurses (6.4+20231118-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Modify reset command to avoid altering clocal if the terminal uses
+      a modem (prompted by discussion with Werner Fink, Michal Suchanek,
+      Closes: #60377).
+    - Correct loop termination condition in waddnstr() and waddnwstr()
+      (Closes: #1055882).
+  * Refresh Debian patches.
+    - Drop the workaround for #933053 from patch 02-debian-xterm.diff,
+      it had been non-functional since version 6.2+20210905-1.
+  * Move all libraries below /usr (Closes: #1055940).
+  * Install libtermcap.so as a symlink rather than a linker script.
+  * Explicitly configure the non-wide builds with --disable-widec.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Mon, 20 Nov 2023 17:30:14 +0100
+
+ncurses (6.4+20231016-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Make the recent change to setupterm optional and disable it
+      by default (Closes: #1054022).
+
+ -- Sven Joachim <svenjoac@gmx.de>  Tue, 17 Oct 2023 17:34:56 +0200
+
+ncurses (6.4+20231007-1) unstable; urgency=medium
+
+  * New upstream patchlevel.
+    - Improve manual description of immedok (Closes: #1053603).
+    - Fix a few formatting issues with manpages (Closes: #1053123).
+  * Update libtinfo6 symbols file, adding eight new symbols.
+  * Refresh Debian patches.
+  * Set BUILD_{C,CPP,LD}FLAGS for the native architecture to fix cross
+    builds which had been broken on arm64 and amd64 by changes in
+    dpkg-buildflags 1.22.0.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 12 Oct 2023 17:07:15 +0200
+
+ncurses (6.4+20230625-2) unstable; urgency=medium
+
+  * Save some build time by not building the static libraries along the
+    shared ones, they are configured and built separately.
+  * Get rid of debian/rxvt.ti (Closes: #1037071) and record relevant
+    Debian changes in a new patch 02-debian-rxvt.diff.
+    - Set kbs=^? according to the Debian keyboard policy.
+    - Provide rxvt-m as an alias to rxvt-basic.
+  * Pass "-Xusr/lib" to dh_missing in the binary-indep target to work
+    around spurious failures in full builds (see #1039941).
+  * Drop patch debian-alacritty.diff.  Alacritty users should upgrade vim
+    to version 2:9.0.1658-1 or higher, or start vim with $TERM set to
+    xterm-256color.
+  * Take over the foot and foot-direct terminfo entries from the
+    foot-terminfo package in ncurses-term (see #1041685).
+    - Add a versioned Provides on foot-terminfo to ncurses-term in order
+      to help with partial upgrades.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sun, 23 Jul 2023 16:58:09 +0200
+
+ncurses (6.4+20230625-1) unstable; urgency=low
+
+  * New upstream patchlevel.
+  * Add Breaks against tmux (<< 3.3a-4) to libtinfo6 (see #1038269).
+  * Remove Replaces/Conflicts/Provides relationships with pre-buster
+    packages in lib{32,64}ncurses-dev.
+  * Set maintainer to ncurses@packages.debian.org, add Craig to Uploaders.
+  * Stop stripping libncurses++w.a manually.
+  * Move the cons25-debian terminfo entry from ncurses-base to
+    ncurses-term, it had only been used in Debian GNU/kFreeBSD 6.0.
+  * Tighten the dependency of ncurses-term on ncurses-base, so that they
+    are always from the same version.
+  * New patch debian-alacritty.diff: remove xterm+focus from the alacritty
+    terminfo entry, as it triggers misbehavior in Vim version before
+    9.0.1619 (see #1038401).
+  * Stop building the libtinfo5, libncurses5 and libncursesw5 packages
+    (Closes: #1025964).
+  * Upload to unstable.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Sat, 01 Jul 2023 10:15:14 +0200
+
+ncurses (6.4+20230603-1) experimental; urgency=low
+
+  * New upstream patchlevel.
+    - Improve checks for malformed terminfo data (report/analysis by
+      Jonathan Bar Or, Michael Pearse, Emanuele Cozzi (CVE-2023-29491,
+      Closes: #1034372)).
+    - Drop compatibility with obsolete versions of tack, e.g., pre-1.08
+      (Closes: #1034549).
+  * Drop cherry-picked patches, applied upstream.
+  * Configure with "--disable-setuid-environ" instead of
+    "--disable-root-environ" and drop patch debian-env-access.diff.
+  * Refresh remaining Debian patches.
+    - Drop the hunk for screen-base from 02-debian-backspace.diff.
+      Upstream sets kbs in screen-base to xterm+kbs now, so this is
+      handled via the "--with-xterm-kbs" configure option.
+  * Configure with "--disable-root-access" to further restrict programs
+    running with elevated privileges.
+  * Update symbols files for the new symbols tiparm_s and tiscan_s,
+    and the newly exported symbols _nc_safe_fopen and _nc_safe_open3.
+  * Remove the ncurses{w,}5-config compatibility symlinks
+    (Closes: #1029977).
+  * Remove old upstream SHA1 signing key C52048C0C0748FEE from
+    debian/upstream/signing-key.asc.
+  * Export ARFLAGS = -crv in debian/rules to ensure deterministic static
+    libraries (see #1029404).
+  * Stop building the empty transitional packages libtinfo-dev
+    and libncurses{,w}5-dev (Closes: #1032708, #1032740, #1032741).
+  * Move the ncurses-base terminfo files to /usr/share/terminfo
+    (Closes: #1028202, #622286).
+    - Add a Breaks on cryptsetup-initramfs (<< 2:2.6.1) to ncurses-base
+      (see #1028234).
+  * Remove various Breaks/Replaces relationships with package versions
+    predating buster.
+  * Update years in debian/copyright.
+
+ -- Sven Joachim <svenjoac@gmx.de>  Thu, 15 Jun 2023 18:34:20 +0200
+
 ncurses (6.4-4+pexip24u3) pexip-bookworm; urgency=medium
 
   * New versioning scheme
@@ -260,7 +474,7 @@ ncurses (6.2+20200912-1) unstable; urgency=medium
   * Bump autoconf-dickey build dependency to (>= 2.52+20200111), as per
     configure.in.
   * Bump debhelper compatibility level to 13.
-    - Use the substition feature in that compat level to get rid of the
+    - Use the substitution feature in that compat level to get rid of the
       debian/*.{install,links}.in files.
 
   [ Debian Janitor ]
@@ -581,7 +795,7 @@ ncurses (6.0+20170701-1) unstable; urgency=low
   * Refresh Debian patches.
   * Update symbols files.
     - Add new symbol _nc_read_entry2.
-    - Drop wo unused symbols obsoleted in 2004: _nc_check_termtype and
+    - Drop two unused symbols obsoleted in 2004: _nc_check_termtype and
       _nc_resolve_uses.
   * Blacklist dvtm and dvtm-256color terminfo entries which are shipped
     in the dvtm package (Closes: #863969).
@@ -1634,7 +1848,7 @@ ncurses (5.6+20080913-1) unstable; urgency=low
 ncurses (5.6+20080907-1) unstable; urgency=low
 
   * Merging upstream version 5.6+20080907.
-  * Installing changelog and docs also for ncurse-base and ncurse-term.
+  * Installing changelog and docs also for ncurses-base and ncurses-term.
     This allows replace the strict versioned depends against libncurses5
     with an unversioned depends.
 

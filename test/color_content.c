@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2020,2022 Thomas E. Dickey                                *
+ * Copyright 2018-2023,2024 Thomas E. Dickey                                *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -26,7 +26,7 @@
  * authorization.                                                           *
  ****************************************************************************/
 /*
- * $Id: color_content.c,v 1.18 2022/12/10 22:28:50 tom Exp $
+ * $Id: color_content.c,v 1.22 2024/12/07 22:22:51 tom Exp $
  */
 
 #define NEED_TIME_H
@@ -58,10 +58,8 @@ static int x_opt;
 
 static MYCOLOR *expected;
 
-#if HAVE_GETTIMEOFDAY
-static struct timeval initial_time;
-static struct timeval finish_time;
-#endif
+static TimeType initial_time;
+static TimeType finish_time;
 
 static void
 failed(const char *msg)
@@ -175,9 +173,7 @@ setup_test(void)
     } else {
 	failed("This demo requires a color terminal");
     }
-#if HAVE_GETTIMEOFDAY
-    gettimeofday(&initial_time, 0);
-#endif
+    GetClockTime(&initial_time);
 }
 
 static void
@@ -190,7 +186,7 @@ run_test(void)
 	my_color_t g;
 	my_color_t b;
 	if (ColorContent(color, &r, &g, &b) == OK) {
-	    if (expected != 0) {
+	    if (expected != NULL) {
 		if (r != expected[color].r)
 		    success = FALSE;
 		if (g != expected[color].g)
@@ -213,16 +209,6 @@ finish_test(void)
     endwin();
 }
 
-#if HAVE_GETTIMEOFDAY
-static double
-seconds(struct timeval *mark)
-{
-    double result = (double) mark->tv_sec;
-    result += ((double) mark->tv_usec / 1e6);
-    return result;
-}
-#endif
-
 static void
 usage(int ok)
 {
@@ -234,10 +220,10 @@ usage(int ok)
 	,"Options:"
 	," -f COLOR first color value to test (default: 0)"
 	," -i       interactive, showing test-progress"
-	," -l COLOR last color value to test (default: max_colors-1)"
+	," -F COLOR last color value to test (default: max_colors-1)"
 	," -n       do not initialize color pairs"
 	," -p       print data for color content instead of testing"
-	," -r COUNT repeat for given count"
+	," -r NUM   repeat tests NUM times"
 	," -s       initialize pairs sequentially rather than random"
 #if USE_EXTENDED_COLOR
 	," -x       use extended color pairs/values"
@@ -257,7 +243,7 @@ main(int argc, char *argv[])
 {
     int ch;
 
-    while ((ch = getopt(argc, argv, OPTS_COMMON "f:il:npr:sx")) != -1) {
+    while ((ch = getopt(argc, argv, OPTS_COMMON "f:iF:npr:sx")) != -1) {
 	switch (ch) {
 	case 'f':
 	    if ((f_opt = atoi(optarg)) <= 0)
@@ -266,7 +252,7 @@ main(int argc, char *argv[])
 	case 'i':
 	    i_opt = 1;
 	    break;
-	case 'l':
+	case 'F':
 	    if ((l_opt = atoi(optarg)) <= 0)
 		usage(FALSE);
 	    break;
@@ -328,12 +314,8 @@ main(int argc, char *argv[])
 	    addch('\n');
 	}
 	printw("DONE: ");
-#if HAVE_GETTIMEOFDAY
-	gettimeofday(&finish_time, 0);
-	printw("%.03f seconds",
-	       seconds(&finish_time)
-	       - seconds(&initial_time));
-#endif
+	GetClockTime(&finish_time);
+	printw("%.03f seconds", ElapsedSeconds(&finish_time, &initial_time));
 	finish_test();
     }
 

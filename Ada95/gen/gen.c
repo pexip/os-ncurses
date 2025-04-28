@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2020,2021 Thomas E. Dickey                                     *
+ * Copyright 2020-2024,2025 Thomas E. Dickey                                *
  * Copyright 1998-2014,2016 Free Software Foundation, Inc.                  *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -35,7 +35,7 @@
 
 /*
     Version Control
-    $Id: gen.c,v 1.78 2021/12/11 21:03:21 tom Exp $
+    $Id: gen.c,v 1.80 2025/01/24 20:39:23 tom Exp $
   --------------------------------------------------------------------------*/
 /*
   This program prints on its standard output the source for the
@@ -189,7 +189,7 @@ find_pos(const UCHAR * const data,
 int
 main(int argc, const char *argv[])
 {
-  FILE *fp = 0;
+  FILE *fp = NULL;
   const int x = 0x12345678;
 
   little_endian = (*((const char *)&x) == 0x78);
@@ -424,7 +424,9 @@ main(int argc, const char *argv[])
   PRINT_NAMED_CONSTANT(KEY_SUSPEND);
   PRINT_NAMED_CONSTANT(KEY_UNDO);
   PRINT_NAMED_CONSTANT(KEY_MOUSE);
+#ifdef KEY_RESIZE
   PRINT_NAMED_CONSTANT(KEY_RESIZE);
+#endif
 
   print_comment(fp, "alternate character codes (ACS) from addch(3NCURSES)");
 #define PRINT_ACS(name) print_size_of (fp, #name, (size_t)(&name - &acs_map[0]))

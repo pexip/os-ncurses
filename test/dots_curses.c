@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright 2018-2020,2022 Thomas E. Dickey                                *
+ * Copyright 2018-2023,2024 Thomas E. Dickey                                *
  * Copyright 2014,2017 Free Software Foundation, Inc.                       *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
@@ -30,7 +30,7 @@
 /*
  * Author: Thomas E. Dickey
  *
- * $Id: dots_curses.c,v 1.24 2022/12/04 00:40:11 tom Exp $
+ * $Id: dots_curses.c,v 1.27 2024/12/07 22:32:11 tom Exp $
  *
  * A simple demo of the curses interface used for comparison with termcap.
  */
@@ -97,7 +97,7 @@ usage(int ok)
 	,"Options:"
 	," -T TERM  override $TERM"
 #if HAVE_USE_DEFAULT_COLORS
-	," -d       invoke use_default_colors()"
+	," -d       invoke use_default_colors"
 #endif
 #if HAVE_USE_ENV
 	," -e       allow environment $LINES / $COLUMNS"
@@ -137,9 +137,10 @@ main(int argc, char *argv[])
 	switch (ch) {
 	case 'T':
 	    need = 6 + strlen(optarg);
-	    my_env = malloc(need);
-	    _nc_SPRINTF(my_env, _nc_SLIMIT(need) "TERM=%s", optarg);
-	    putenv(my_env);
+	    if ((my_env = malloc(need)) != NULL) {
+		_nc_SPRINTF(my_env, _nc_SLIMIT(need) "TERM=%s", optarg);
+		putenv(my_env);
+	    }
 	    break;
 #if HAVE_USE_DEFAULT_COLORS
 	case 'd':
@@ -169,7 +170,7 @@ main(int argc, char *argv[])
 	}
     }
 
-    srand((unsigned) time(0));
+    srand((unsigned) time(NULL));
 
     SetupAlarm(r_option);
     InitAndCatch(initscr(), onsig);

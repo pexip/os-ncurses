@@ -2,14 +2,15 @@ Source: ncurses
 Section: libs
 Priority: required
 Maintainer: Pexip AS <packaging@pexip.com>
-XSBC-Pexip-Original-Maintainer: Craig Small <csmall@debian.org>
-XSBC-Pexip-Original-Uploaders: Sven Joachim <svenjoac@gmx.de>
+XSBC-Pexip-Original-Maintainer: Ncurses Maintainers <ncurses@packages.debian.org>
+XSBC-Pexip-Original-Uploaders: Sven Joachim <svenjoac@gmx.de>, Craig Small <csmall@debian.org>
 Build-Depends: debhelper-compat (= 13),
                libgpm-dev [linux-any],
-               pkg-config,
+               pkgconf,
                autoconf-dickey (>= 2.52+20210509),
 Build-Depends-Arch: g++-multilib [amd64 i386 powerpc ppc64 s390 sparc] <!nobiarch>
-Standards-Version: 4.6.2
+Build-Depends-Indep: ncurses-term <pkg.ncurses.terminfocheck>
+Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Vcs-Browser: https://salsa.debian.org/debian/ncurses
 Vcs-Git: https://salsa.debian.org/debian/ncurses.git
@@ -23,10 +24,9 @@ Essential: yes
 Multi-Arch: foreign
 Depends: ${misc:Depends}
 Provides: ncurses-runtime
-Breaks: libtinfo5 (<< 6.1), libslang2 (<< 2.3.1a-3), libunibilium0 (<< 2),
-        libunibilium4 (<< 2.0.0-3), bash-static (<< 4.4.18-1.1),
-        zsh-static (<< 5.4.2-4), libmono-corlib4.5-cil (<< 4.6.2.7+dfsg-2),
-        neovim (<< 0.6.0), vim-common (<< 2:9.0.1000-2)
+Replaces: ncurses-term (<< 6.4+20230603)
+Breaks: neovim (<< 0.6.0), vim-common (<< 2:9.0.1000-2),
+        ncurses-term (<< 6.4+20230625), cryptsetup-initramfs (<< 2:2.6.1)
 Description: basic terminal type definitions
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -40,13 +40,12 @@ Architecture: all
 Section: misc
 Priority: standard
 Multi-Arch: foreign
-Depends: ncurses-base (>= 6.1+20190713), ${misc:Depends}
-Replaces: dvtm (<< 0.15-3), alacritty (<< 0.3.4~), jfbterm (<< 0.4.7-10),
-          kon2 (<< 0.3.9b-21), libiterm1 (<< 0.5-9), tn5250 (<< 0.17.4-3)
-Breaks: libtinfo5 (<< 6.1), libslang2 (<< 2.3.1a-3), libunibilium0 (<< 2),
-        libunibilium4 (<< 2.0.0-3), bash-static (<< 4.4.18-1.1),
-        zsh-static (<< 5.4.2-4), libmono-corlib4.5-cil (<< 4.6.2.7+dfsg-2),
-        dvtm (<< 0.15-3), vim-common (<< 2:9.0.1000-2)
+Depends: ncurses-base (= ${binary:Version}), ${misc:Depends}
+Replaces: alacritty (<< 0.3.4~), jfbterm (<< 0.4.7-10),
+          kon2 (<< 0.3.9b-21), libiterm1 (<< 0.5-9), tn5250 (<< 0.17.4-3),
+          ncurses-base (<< 6.4+20230625), foot-terminfo (<< 1.15.1-2)
+Breaks: vim-common (<< 2:9.0.1000-2), foot-terminfo (<< 1.15.1-2)
+Provides: foot-terminfo (= ${binary:Version})
 Description: additional terminal type definitions
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -60,6 +59,7 @@ Priority: optional
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: tmux (<< 3.3a-4)
 Description: shared low-level terminfo library for terminal handling
  The ncurses library routines are a terminal-independent method of
  updating character screens with reasonable optimization.
@@ -101,17 +101,12 @@ Section: libdevel
 Priority: optional
 Multi-Arch: same
 Depends: libtinfo6 (= ${binary:Version}), libncurses6 (= ${binary:Version}),
-         libncursesw6 (= ${binary:Version}), libc6-dev | libc-dev, ${misc:Depends},
-         ncurses-bin (>= 6.0+20151017)
+         libncursesw6 (= ${binary:Version}), libc6-dev | libc-dev, ${misc:Depends}
 Conflicts: ncurses-dev
-Replaces: ncurses-dev, libncurses5-dev (<< 6.1+20180210),
-          libncursesw5-dev (<< 6.1+20180210), libtinfo-dev (<< 6.1+20180210),
-          ncurses-bin (<< 6.0+20151017)
+Replaces: ncurses-dev
 Provides: libncurses5-dev (= ${binary:Version}),
           libncursesw5-dev (= ${binary:Version}),
           libtinfo-dev (= ${binary:Version}), ncurses-dev
-Breaks: libncurses5-dev (<< 6.1+20180210), libncursesw5-dev (<< 6.1+20180210),
-        libtinfo-dev (<< 6.1+20180210)
 Suggests: ncurses-doc
 Description: developer's libraries for ncurses
  The ncurses library routines are a terminal-independent method of
@@ -119,26 +114,6 @@ Description: developer's libraries for ncurses
  .
  This package contains the header files, static libraries
  and symbolic links that developers using ncurses will need.
-
-Package: libtinfo-dev
-Architecture: any
-Section: oldlibs
-Priority: optional
-Multi-Arch: same
-Depends: libtinfo6 (= ${binary:Version}), libncurses-dev (= ${binary:Version}),
-         ${misc:Depends}
-Description: transitional package for libncurses-dev
- This is a transitional package that can safely be removed.
-
-Package: libncurses5-dev
-Architecture: any
-Section: oldlibs
-Priority: optional
-Multi-Arch: same
-Depends: libtinfo6 (= ${binary:Version}), libncurses-dev (= ${binary:Version}),
-         ${misc:Depends}
-Description: transitional package for libncurses-dev
- This is a transitional package that can safely be removed.
 
 Package: libncursesw6
 Architecture: any
@@ -168,16 +143,6 @@ Description: shared libraries for terminal handling (wide character support) - u
  This package contains the stripped-down udeb version of shared libraries
  necessary to run programs compiled with ncursesw, which includes support
  for wide characters.
-
-Package: libncursesw5-dev
-Architecture: any
-Section: oldlibs
-Priority: optional
-Multi-Arch: same
-Depends: libtinfo6 (= ${binary:Version}), libncurses-dev (= ${binary:Version}),
-         ${misc:Depends}
-Description: transitional package for libncurses-dev
- This is a transitional package that can safely be removed.
 
 Package: lib64tinfo6
 Architecture: i386 powerpc sparc s390
@@ -233,9 +198,6 @@ Depends: lib64ncurses6 (= ${binary:Version}),
          lib64tinfo6 (= ${binary:Version}),
          libncurses-dev (= ${binary:Version}), lib64c-dev, ${misc:Depends}
 Suggests: ncurses-doc
-Replaces: amd64-libs-dev (<= 1.2), lib64ncurses5-dev
-Conflicts: lib64ncurses5-dev
-Provides: lib64ncurses5-dev
 Build-Profiles: <!nobiarch>
 Description: developer's libraries for ncurses (64-bit)
  The ncurses library routines are a terminal-independent method of
@@ -301,9 +263,6 @@ Depends: lib32ncurses6 (= ${binary:Version}),
          lib32tinfo6 (= ${binary:Version}),
          libncurses-dev (= ${binary:Version}), lib32c-dev, ${misc:Depends}
 Suggests: ncurses-doc
-Replaces: lib32ncurses5-dev, lib32ncursesw5-dev, lib32tinfo-dev
-Conflicts: lib32ncurses5-dev, lib32ncursesw5-dev, lib32tinfo-dev
-Provides: lib32ncurses5-dev, lib32ncursesw5-dev, lib32tinfo-dev
 Build-Profiles: <!nobiarch>
 Description: developer's libraries for ncurses (32-bit)
  The ncurses library routines are a terminal-independent method of
@@ -360,51 +319,3 @@ Description: developer's guide and documentation for ncurses
  includes the libraries' man pages.
  .
  Non-developers likely have little use for this package.
-
-Package: libtinfo5
-Architecture: any
-Section: oldlibs
-Priority: optional
-Pre-Depends: ${misc:Pre-Depends}
-Multi-Arch: same
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Build-Profiles: <!pkg.ncurses.nolegacy>
-Description: shared low-level terminfo library (legacy version)
- The ncurses library routines are a terminal-independent method of
- updating character screens with reasonable optimization.
- .
- This package contains the legacy version of the shared low-level
- terminfo library.
-
-Package: libncurses5
-Architecture: any
-Section: oldlibs
-Priority: optional
-Pre-Depends: ${misc:Pre-Depends}
-Multi-Arch: same
-Depends: libtinfo5 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Recommends: libgpm2 [linux-any]
-Build-Profiles: <!pkg.ncurses.nolegacy>
-Description: shared libraries for terminal handling (legacy version)
- The ncurses library routines are a terminal-independent method of
- updating character screens with reasonable optimization.
- .
- This package contains the legacy shared libraries necessary to run
- programs compiled with ncurses.
-
-Package: libncursesw5
-Architecture: any
-Section: oldlibs
-Priority: optional
-Pre-Depends: ${misc:Pre-Depends}
-Multi-Arch: same
-Depends: libtinfo5 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Recommends: libgpm2 [linux-any]
-Build-Profiles: <!pkg.ncurses.nolegacy>
-Description: shared libraries for terminal handling (wide character legacy version)
- The ncurses library routines are a terminal-independent method of
- updating character screens with reasonable optimization.
- .
- This package contains the legacy shared libraries necessary to run
- programs compiled with ncursesw, which includes support for wide
- characters.
